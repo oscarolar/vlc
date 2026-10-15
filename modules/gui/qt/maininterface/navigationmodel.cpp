@@ -283,13 +283,20 @@ public:
             m_model.children.push_back(std::move(musicEntry));
         }
 
-        m_model.children.emplace_back(qtr("Browse"), "network", VLCIcons::topbar_network, QStringLiteral(":/icons/ic_fluent_wifi_1.svg"));
+        //browsing (local folders, devices, network shares) and discovery
+        //services are both ways to reach media outside the library
+        ModelEntry streamsEntry{ qtr("Network streams"), "streams", VLCIcons::topbar_discover, QStringLiteral(":/icons/ic_fluent_globe.svg") };
+        streamsEntry.children.emplace_back(qtr("Browse"), "network");
+        streamsEntry.children.emplace_back(qtr("Discover"), "discover");
+        m_model.children.push_back(std::move(streamsEntry));
 
-        ModelEntry discoverEntry{ qtr("Discover"), "discover", VLCIcons::topbar_discover, QStringLiteral(":/icons/ic_fluent_globe.svg") };
-        discoverEntry.children.emplace_back(qtr("Services"), "services");
-
-        discoverEntry.children.emplace_back(qtr("URL"), "url");
-        m_model.children.push_back(std::move(discoverEntry));
+        if (m_hasMedialib)
+        {
+            ModelEntry playlistsEntry{ qtr("Playlists"), "playlists", VLCIcons::playlist, QStringLiteral(":/menu/ic_playlist.svg") };
+            playlistsEntry.children.emplace_back(qtr("Video"), "video");
+            playlistsEntry.children.emplace_back(qtr("Music"), "music");
+            m_model.children.push_back(std::move(playlistsEntry));
+        }
 
         m_model.visibleChildren = m_model.children.size();
     }
