@@ -6,6 +6,13 @@ vlc_tests += {
 }
 
 vlc_tests += {
+    'name' : 'test_src_config_sub_autodetect_fuzzy',
+    'sources' : files('config/sub_autodetect_fuzzy.c'),
+    'suite' : ['src', 'test_src'],
+    'link_with' : [libvlc, libvlccore],
+}
+
+vlc_tests += {
     'name' : 'test_src_misc_ancillary',
     'sources' : files('misc/ancillary.c'),
     'suite' : ['src', 'test_src'],

@@ -424,6 +424,11 @@ static const char *const ppsz_sub_align_descriptions[] =
 { N_("Unset"), N_("Center"), N_("Left"), N_("Right"), N_("Top"), N_("Bottom"),
   N_("Top-Left"), N_("Top-Right"), N_("Bottom-Left"), N_("Bottom-Right") };
 
+static const int pi_sub_fuzzy_values[] = { 0, 1, 2, 3, 4 };
+static const char *const ppsz_sub_fuzzy_descriptions[] =
+{ N_("Off"), N_("Any subtitle file"), N_("Contains the file name"),
+  N_("File name with extra characters"), N_("Exact file name match") };
+
 #define SS_TEXT N_("Disable screensaver")
 #define SS_LONGTEXT N_("Disable the screensaver during video playback." )
 
@@ -864,13 +869,8 @@ static const char* const ppsz_restore_playback_desc[] = {
 
 #define SUB_FUZZY_TEXT N_("Subtitle autodetection fuzziness")
 #define SUB_FUZZY_LONGTEXT N_( \
-    "This determines how fuzzy subtitle and movie filename matching " \
-    "will be. Options are:\n" \
-    "0 = no subtitles autodetected\n" \
-    "1 = any subtitle file\n" \
-    "2 = any subtitle file containing the movie name\n" \
-    "3 = subtitle file matching the movie name with additional chars\n" \
-    "4 = subtitle file matching the movie name exactly")
+    "This determines how closely a subtitle file name must match the " \
+    "movie file name to be loaded automatically.")
 
 #define SUB_PATH_TEXT N_("Subtitle autodetection paths")
 #define SUB_PATH_LONGTEXT N_( \
@@ -1818,6 +1818,7 @@ vlc_module_begin ()
                  SUB_AUTO_TEXT, SUB_AUTO_LONGTEXT )
     add_integer( "sub-autodetect-fuzzy", 3,
                  SUB_FUZZY_TEXT, SUB_FUZZY_LONGTEXT )
+        change_integer_list( pi_sub_fuzzy_values, ppsz_sub_fuzzy_descriptions )
 #if defined( _WIN32 ) || defined( __OS2__ )
 #   define SUB_PATH ".\\subtitles, .\\subs"
 #else
