@@ -22,7 +22,8 @@ depends_on: []
 upstream_ruling: needed
 target: fork
 mr_title: "qml: route corner radii and the play button through style tokens"
-status: ready
+status: review
+actual_h: 0.2
 ---
 
 # PKT-3001 — Design tokens: one orange accent, neutral greys and softer corners everywhere
@@ -124,6 +125,11 @@ Rows are hypotheses read at `base_sha`; Step 2 confirms or rewrites them. No C++
    ruled. Recorded so the reviewer does not read the circle as an omission.
 4. NOTE — the two `FIXME` oranges (`modules/gui/qt/style/systempalette.hpp:117-118`) are not used by the player; left as they are.
 5. NOTE — no new string, no new file: `po/POTFILES.in` untouched.
+6. NOTE (Step 2 dry-run, 2026-10-15) — `grep -rn "radius:"` over `modules/gui/qt/player` and `modules/gui/qt/widgets/qml`
+   finds 64 sites. Commit 2 converts these sites: `modules/gui/qt/widgets/qml/SliderExt.qml:48` (`radius_xsmall`),
+   `modules/gui/qt/player/qml/SliderBar.qml:327` and `:436` (`radius_xsmall`), `modules/gui/qt/player/qml/SliderBar.qml:578` (`width / 2`), and
+   `modules/gui/qt/widgets/qml/ButtonExt.qml:48` (`radius_small`). `ButtonExt.qml:107` and `:121` already read `control.radius` and
+   `parent.radius`, so the token goes in the declaration at `:48`. The other sites are out of scope (later packets).
 
 ## 6. Definition of Done
 ```bash
@@ -137,7 +143,43 @@ docker --context nzxt run --rm -v ~/src/vlc:/vlc -w /vlc registry.videolan.org/v
 - Keyboard navigation (`Navigation.*`) and accessibility (`Accessible.*`) work on every new control.
 
 ### Evidence
-<Filled by the executor: build tail, `meson test` summary, screenshots, MR URL.>
+Executed 2026-10-15 on `nzxt`, worktree `~/src/vlc-wt/pkt-3001` (branch `master-pkt-3001-design-tokens-accent-greys-corners`
+from `ce4af2f`), the CI image of §6, `meson setup build-meson -Dextra_checks=true`, `ninja -j8`.
+Logs: `~/src/logs/pkt-3001-*.log`.
+
+- Commits: `9f81cad` qt: add corner radius tokens to VLCStyle; `e0b901d` qml: use the radius tokens in the player
+  controls; `3aa50e6` qml: let the play button follow the accent colour.
+- PR: https://github.com/oscarolar/vlc/pull/4 (fork, base `master`).
+- Baseline (`pkt-3001-baseline.log`): full build plus `meson test --suite qt` gave Ok 7, Fail 0.
+- Gate after commit 3 (`pkt-3001-gate.log`): `meson test -C build-meson --suite qt --print-errorlogs` gave Ok 7, Fail 0.
+  Each commit built on its own (`pkt-3001-commit1.log`, `pkt-3001-commit2.log`).
+- Warnings: no compiler warning in the touched files. The only warnings in the logs are meson's configure notices and
+  the generic cc1plus `-Werror=unterminated-string-initialization` notice, which baseline has too.
+- qmllint, Qt 6 (`pkt-3001-qmllint-before.log` and `pkt-3001-qmllint-after.log`). Warning counts per file, before
+  and after: VLCStyle 135 and 135, SliderExt 35 and 34, SliderBar 178 and 179, ButtonExt 56 and 56, PlayButton 91 and
+  100. Every added line is an unresolved-VLC-type warning (`ColorContext`, `VLCStyle`, the outer `root` id), the same
+  kind the existing `theme` context already raises. There is no new semantic warning.
+- Rows 1 to 5 (MANUAL): screenshots are still pending. There is no display in the build environment, so they must be
+  taken on a desktop build and attached to the PR.
+- Figma: the community file 1691465999134370980 returned HTTP 403 without a browser login. The radius values are the
+  ones proposed in §5.1.
+- Deviations:
+  - Spec facts that differ from the code:
+    - Row 3 expects a white glyph, but the play button is an accent ring around a white disc with a black glyph. The
+      commit recolours the ring only, so with the option set the ring turns blue and the disc and glyph stay as they are.
+    - `SliderBar.qml:327` `radius: implicitHeight` read the Rectangle's own implicit height, which is 0, so the track
+      was square before.
+    - `SliderExt`'s 3 dp radius was already clamped to 2 dp by its 4 dp bar, so `radius_xsmall` draws exactly the same.
+    - VLCStyle uses `MainCtx.dp`, not `VLCStyle.dp`.
+  - Choices made in this packet:
+    - The seek handle uses `width / 2` instead of a token. It is a round knob, matching the `SliderExt` handle, and it
+      draws the same as before because `margin_small` (12 dp) was already more than half of its 15 dp size.
+    - `gridCover_radius` also became an alias (of `radius_small`) because its value matches.
+    - The ButtonAccent context sets only `enabled`, so the play button stays on the accent while pressed, instead of
+      using ButtonAccent's fixed pressed orange `#e65609`.
+  - Build setup: the §6 command was run from the worktree with `~/src` mounted at the same path.
+  - Baseline: the commit 1 VLCStyle edit was saved while the baseline build was still running. The 7/7 result on
+    `ce4af2f` is also documented in BUILD-NOTES.
 
 ## 7. Agent brief
 - [ ] **Step 1: Work clone** — on `nzxt`, in `~/src/vlc`: `git switch -c master-pkt-3001-design-tokens-accent-greys-corners ce4af2f`
