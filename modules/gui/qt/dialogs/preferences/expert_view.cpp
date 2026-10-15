@@ -168,6 +168,7 @@ void ExpertPrefsTable::modifyItemPrivate( const QModelIndex &index )
         if( color.isValid() )
         {
             cfg_item->value.i = (color.red() << 16) + (color.green() << 8) + color.blue();
+            item->markEdited();
             item->updateMatchesDefault();
             item->updateValueDisplayString();
             myModel()->notifyUpdatedRow( index.row() );
@@ -268,6 +269,7 @@ void ExpertPrefsEditDialog::clearControl()
 void ExpertPrefsEditDialog::accept()
 {
     control->storeValue();
+    table_item->markEdited();
     table_item->updateMatchesDefault();
     table_item->updateValueDisplayString();
     clearControl();

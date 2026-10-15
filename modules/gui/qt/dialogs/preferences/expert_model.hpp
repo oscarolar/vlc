@@ -48,6 +48,9 @@ public:
     const QString &getDescription();
     module_config_t *getConfig() const { return cfg_item; }
     bool matchesDefault() const { return matches_default; }
+    /** Whether the value was edited in the table */
+    bool isEdited() const { return edited; }
+    void markEdited() { edited = true; }
     void updateMatchesDefault();
     void updateValueDisplayString();
     /** Search filter helper */
@@ -68,6 +71,7 @@ private:
     module_config_t *cfg_item;
     /** Is item state different to the default value? */
     bool matches_default;
+    bool edited = false;
 };
 
 class ExpertPrefsTableModel : public QAbstractListModel

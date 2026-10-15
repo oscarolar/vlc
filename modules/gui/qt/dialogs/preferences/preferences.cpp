@@ -332,24 +332,19 @@ void PrefsDialog::changeExpertDesc( const QModelIndex &current, const QModelInde
 /* Actual apply and save for the preferences */
 void PrefsDialog::save()
 {
-    if( simple->isChecked() && simple_tree->isVisible() )
+    /* Apply every view that was built, whichever is shown: each one only
+     * writes the options changed in it, so a change made in one view is
+     * neither lost nor overwritten by another view */
+    msg_Dbg( p_intf, "Saving the preferences" );
+    for( int i = 0 ; i < SPrefsMax; i++ )
     {
-        msg_Dbg( p_intf, "Saving the simple preferences" );
-        for( int i = 0 ; i< SPrefsMax; i++ ){
-            if( simple_panels_stack->widget(i) )
-                qobject_cast<SPrefsPanel *>(simple_panels_stack->widget(i))->apply();
-        }
+        if( simple_panels[i] )
+            simple_panels[i]->apply();
     }
-    else if( all->isChecked() && advanced_tree->isVisible() )
-    {
-        msg_Dbg( p_intf, "Saving the advanced preferences" );
+    if( advanced_tree )
         advanced_tree->applyAll();
-    }
-    else if( expert->isChecked() && expert_table->isVisible() )
-    {
-        msg_Dbg( p_intf, "Saving the expert preferences" );
+    if( expert_table )
         expert_table->applyAll();
-    }
 
     /* Save to file */
     if( config_SaveConfigFile( p_intf ) != 0 )

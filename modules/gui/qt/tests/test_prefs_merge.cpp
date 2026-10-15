@@ -27,6 +27,8 @@
 
 #include "dialogs/preferences/prefs_merge.hpp"
 #include "dialogs/preferences/preferences_widgets.hpp"
+#include "dialogs/preferences/complete_preferences.hpp"
+#include "dialogs/preferences/expert_model.hpp"
 
 #include <vlc_configuration.h>
 #include <vlc_modules.h>
@@ -260,8 +262,73 @@ private slots:
         QCOMPARE( bool( config_GetInt( "sub-autodetect-file" ) ), !before );
     }
 
+    /* row 6: the dialog applies the simple panels, then the All tree, then
+     * the Expert table; a control the user did not touch must not write back
+     * the value it was built with */
+    void testSaveAppliesAllBuiltViews()
+    {
+        const bool autodetect = config_GetInt( "sub-autodetect-file" );
+        const bool fill = config_GetInt( "spu-fill" );
+
+        /* both views are built before any change */
+        AdvancedOptionsSection section( SPrefsSubtitles, subtitlesShown );
+        QToolButton *toggle = expander( &section );
+        QVERIFY( toggle );
+        toggle->click();
+
+        PrefsTreeItem node( PrefsTreeItem::SUBCATEGORY_NODE );
+        node.subcat_id = SUBCAT_VIDEO_SUBPIC;
+        node.p_module = module_get_main();
+        AdvPrefsPanel panel( m_env->intf, nullptr, &node );
+
+        size_t count;
+        module_t **list = module_list_get( &count );
+        ExpertPrefsTableModel expert( list, count );
+
+        /* change in the Advanced group, change in the All view */
+        QCheckBox *inSection = checkBoxFor( &section, "sub-autodetect-file" );
+        QCheckBox *inPanel = checkBoxFor( &panel, "spu-fill" );
+        QVERIFY( inSection && inPanel );
+        inSection->setChecked( !autodetect );
+        inPanel->setChecked( !fill );
+
+        section.apply();
+        panel.apply();
+        expert.submit();
+        module_list_free( list );
+
+        QCOMPARE( bool( config_GetInt( "sub-autodetect-file" ) ), !autodetect );
+        QCOMPARE( bool( config_GetInt( "spu-fill" ) ), !fill );
+    }
+
+    void testExpertSubmitsEditedOnly()
+    {
+        const bool fill = config_GetInt( "spu-fill" );
+        size_t count;
+        module_t **list = module_list_get( &count );
+        ExpertPrefsTableModel expert( list, count );
+
+        int row = -1;
+        for( int i = 0; i < expert.rowCount(); i++ )
+            if( !strcmp( expert.itemAt( i )->getConfig()->psz_name, "spu-fill" ) )
+                row = i;
+        QVERIFY( row >= 0 );
+
+        /* changed elsewhere after the table was built */
+        config_PutInt( "spu-fill", !fill );
+        expert.submit();
+        QCOMPARE( bool( config_GetInt( "spu-fill" ) ), !fill );
+
+        /* edited in the table: the copy goes from fill to !fill */
+        expert.toggleBoolean( expert.index( row, 0 ) );
+        config_PutInt( "spu-fill", fill );
+        expert.submit();
+        QCOMPARE( bool( config_GetInt( "spu-fill" ) ), !fill );
+        module_list_free( list );
+    }
+
 private:
-    static constexpr const char *touched[] = { "sub-autodetect-file" };
+    static constexpr const char *touched[] = { "sub-autodetect-file", "spu-fill" };
     std::unique_ptr<VLCTestingEnv> m_env;
     QHash<const char *, int64_t> m_saved;
 };

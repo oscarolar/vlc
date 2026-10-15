@@ -1462,12 +1462,16 @@ if qt6_dep.found()
                 'tests/test_prefs_merge.cpp',
                 'tests/vlc_stub_modules.cpp',
                 'dialogs/preferences/prefs_merge.cpp',
+                'dialogs/preferences/complete_preferences.cpp',
+                'dialogs/preferences/expert_model.cpp',
             ), qt_prefs_test_sources],
             'moc_sources': files(
                 'tests/test_prefs_merge.cpp'
             ),
             'moc_headers': [files(
                 'dialogs/preferences/prefs_merge.hpp',
+                'dialogs/preferences/complete_preferences.hpp',
+                'dialogs/preferences/expert_model.hpp',
             ), qt_prefs_test_moc_headers],
             'suite': ['qt'],
             'include_directories' : qt_include_dir,
