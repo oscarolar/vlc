@@ -1340,6 +1340,54 @@ if qt6_dep.found()
         }
 
         vlc_tests += {
+            'name': 'test_qt_ml_playlist_create',
+            'sources': files(
+                'tests/test_ml_playlist_create.cpp',
+                'tests/vlc_stub_modules.cpp',
+                'util/base_model.cpp',
+                'util/vlctick.cpp',
+                'medialibrary/mlbasemodel.cpp',
+                'medialibrary/medialib.cpp',
+                'medialibrary/mlthreadpool.cpp',
+                'medialibrary/mlplaylist.cpp',
+                'medialibrary/mlplaylistlistmodel.cpp',
+                'playlist/playlist_controller.cpp',
+                'playlist/playlist_item.cpp',
+            ),
+            'moc_sources': files(
+                'tests/test_ml_playlist_create.cpp'
+            ),
+            # needed by dialogs/dialogs_provider.hpp
+            'ui_files': files(
+                'dialogs/open/open.ui',
+                'dialogs/open/open_capture.ui',
+                'dialogs/open/open_disk.ui',
+                'dialogs/open/open_file.ui',
+                'dialogs/open/open_net.ui',
+            ),
+            'moc_headers': files(
+                'tests/vlc_stub_modules.cpp',
+                'util/base_model.hpp',
+                'util/listcache.hpp',
+                'util/locallistcacheloader.hpp',
+                'util/vlctick.hpp',
+                'medialibrary/mlqmltypes.hpp',
+                'medialibrary/mlbasemodel.hpp',
+                'medialibrary/medialib.hpp',
+                'medialibrary/mlthreadpool.hpp',
+                'medialibrary/mlplaylist.hpp',
+                'medialibrary/mlplaylistlistmodel.hpp',
+                'playlist/playlist_controller.hpp',
+                'playlist/playlist_item.hpp',
+            ),
+            'suite': ['qt'],
+            'include_directories' : qt_include_dir,
+            'link_with': [libvlccore, libvlc],
+            'link_args': qt_link_args,
+            'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+        }
+
+        vlc_tests += {
             'name': 'test_qt_navigation_model',
             'sources': files(
                 'tests/vlc_stub_modules.cpp',
