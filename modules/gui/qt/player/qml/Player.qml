@@ -138,6 +138,7 @@ FocusScope {
         isInteractive: Player.isInteractive
         hasEmbededVideo: MainCtx.hasEmbededVideo
         hideTimeout: MainCtx.mouseHideTimeout
+        revealMode: MainCtx.controlsReveal
 
         onForceUnlock:{
             controlBar.forceUnlock()
@@ -287,8 +288,24 @@ FocusScope {
                             playerToolbarVisibilityFSM.mouseMove();
                     }
 
+                    function onMouseMoved(x : real, y : real) {
+                        if (Player.isInteractive)
+                            return
+
+                        // the surface reports positions in physical pixels
+                        const dpr = Screen.devicePixelRatio
+                        const pos = videoSurface.mapToItem(rootPlayer, x / dpr, y / dpr)
+                        const band = VLCStyle.dp(MainCtx.controlsRevealBand, VLCStyle.scale)
+
+                        playerToolbarVisibilityFSM.pointerZone(
+                            Helpers.edgeZone(pos.y, rootPlayer.height,
+                                             Math.max(band, topBar.height),
+                                             Math.max(band, controlBar.height)))
+                    }
+
                     Component.onCompleted: {
                         mouseMoved.connect(videoSurface.onMouseEvent)
+                        mouseMoved.connect(videoSurface.onMouseMoved)
                         mousePressed.connect(videoSurface.onMouseEvent)
                         mouseReleased.connect(videoSurface.onMouseEvent)
                         mouseDblClicked.connect(videoSurface.onMouseEvent)
@@ -989,7 +1006,7 @@ FocusScope {
         //initial state value is "", using a binding avoid animation on startup
         Binding on state {
             when: playerToolbarVisibilityFSM.started
-            value: (playerToolbarVisibilityFSM.isVisible || rootPlayer._controlsUnderVideo) ? "visible" : "hidden"
+            value: (playerToolbarVisibilityFSM.isTopVisible || rootPlayer._controlsUnderVideo) ? "visible" : "hidden"
         }
 
         onTogglePlaylistVisibility: playlistVisibility.togglePlaylistVisibility()
@@ -1327,7 +1344,7 @@ FocusScope {
         //initial state value is "", using a binding avoid animation on startup
         Binding on state {
             when: playerToolbarVisibilityFSM.started
-            value: (playerToolbarVisibilityFSM.isVisible || rootPlayer._controlsUnderVideo) ? "visible" : "hidden"
+            value: (playerToolbarVisibilityFSM.isBottomVisible || rootPlayer._controlsUnderVideo) ? "visible" : "hidden"
         }
 
         onRequestLockUnlockAutoHide: (lock) => rootPlayer.lockUnlockAutoHide(lock)

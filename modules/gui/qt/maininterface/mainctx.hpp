@@ -130,6 +130,8 @@ class MainCtx : public QObject
     Q_PROPERTY(float safeArea READ safeArea NOTIFY safeAreaChanged FINAL)
     Q_PROPERTY(VideoSurfaceProvider* videoSurfaceProvider READ getVideoSurfaceProvider WRITE setVideoSurfaceProvider NOTIFY hasEmbededVideoChanged FINAL)
     Q_PROPERTY(int mouseHideTimeout READ mouseHideTimeout NOTIFY mouseHideTimeoutChanged FINAL)
+    Q_PROPERTY(int controlsReveal READ controlsReveal NOTIFY controlsRevealChanged FINAL)
+    Q_PROPERTY(int controlsRevealBand READ controlsRevealBand NOTIFY controlsRevealBandChanged FINAL)
     Q_PROPERTY(bool albumSections READ albumSections WRITE setAlbumSections NOTIFY albumSectionsChanged FINAL)
     Q_PROPERTY(bool lyricsMode READ lyricsMode WRITE setLyricsMode NOTIFY lyricsModeChanged FINAL)
     Q_PROPERTY(bool usingTouch READ usingTouch NOTIFY usingTouchChanged FINAL)
@@ -193,6 +195,14 @@ public:
         RAISE_AUDIO,
         RAISE_AUDIOVIDEO,
     };
+
+    //when the player top bar and control bar are revealed
+    enum ControlsReveal
+    {
+        CONTROLS_REVEAL_ANYWHERE,
+        CONTROLS_REVEAL_EDGES
+    };
+    Q_ENUM(ControlsReveal)
 
     enum Grouping
     {
@@ -279,6 +289,8 @@ public:
     void setVideoSurfaceProvider(VideoSurfaceProvider* videoSurfaceProvider);
 
     int mouseHideTimeout() const { return m_mouseHideTimeout; }
+    int controlsReveal() const { return m_controlsReveal; }
+    int controlsRevealBand() const { return m_controlsRevealBand; }
 
     bool usingTouch() const { return m_usingTouch; }
 
@@ -486,6 +498,8 @@ protected:
     float m_safeArea = 0.0;
 
     int m_mouseHideTimeout = 1000;
+    int m_controlsReveal = CONTROLS_REVEAL_ANYWHERE;
+    int m_controlsRevealBand = 80;
 
     bool m_albumSections = true;
 
@@ -605,6 +619,8 @@ signals:
     void safeAreaChanged();
 
     void mouseHideTimeoutChanged();
+    void controlsRevealChanged();
+    void controlsRevealBandChanged();
 
     void navBoxToggled();
 
