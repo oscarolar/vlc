@@ -966,18 +966,11 @@ FocusScope {
                  ? rootPlayer.width - playlistpopup.width
                  : rootPlayer.width
 
-        // NOTE: With pinned controls, the top controls are hidden when switching to
-        //       fullScreen. Except when resume is visible
-        visible: (MainCtx.pinVideoControls === false
-                  ||
-                  MainCtx.intfMainWindow.visibility !== Window.FullScreen
-                  ||
-                  resumeVisible)
-
         focus: true
         title: Player.title
 
         pinControls: MainCtx.pinVideoControls
+        fullScreen: MainCtx.intfMainWindow.visibility === Window.FullScreen
 
         showCSD: MainCtx.clientSideDecoration && (MainCtx.intfMainWindow.visibility !== Window.FullScreen)
         showToolbar: MainCtx.hasToolbarMenu && (MainCtx.intfMainWindow.visibility !== Window.FullScreen)
