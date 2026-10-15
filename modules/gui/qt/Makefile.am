@@ -1914,5 +1914,7 @@ qml_test_LDFLAGS = $(AM_LDFLAGS) $(QT_QUICK_TEST_LDFLAGS)
 check_PROGRAMS += qml_test
 EXTRA_DIST += tests/tst_FSM.qml
 TESTS += tests/tst_FSM.qml
+EXTRA_DIST += tests/tst_NetworkAddressbar.qml
+TESTS += tests/tst_NetworkAddressbar.qml
 endif
 endif
