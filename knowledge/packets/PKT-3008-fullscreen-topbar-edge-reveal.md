@@ -24,7 +24,8 @@ depends_on: []
 upstream_ruling: needed
 target: fork
 mr_title: "qml: reveal the player bars when the pointer nears their edge"
-status: ready
+status: review
+actual_h: 0.7
 ---
 
 # PKT-3008 — In fullscreen the title bar stays available, and both bars appear only near their edge
@@ -146,7 +147,42 @@ docker --context nzxt run --rm -v ~/src/vlc:/vlc -w /vlc registry.videolan.org/v
 - Keyboard navigation (`Navigation.*`) and accessibility (`Accessible.*`) work on every new control.
 
 ### Evidence
-<Filled by the executor: build tail, `meson test` summary, screenshots, MR URL.>
+Executed 2026-10-15 on nzxt, worktree ~/src/vlc-wt/pkt-3008, branch `master-pkt-3008-fullscreen-topbar-edge-reveal` from ce4af2f,
+CI image `registry.videolan.org/vlc-debian-unstable:20260611225331`, `meson setup build-meson -Dextra_checks=true && ninja -j8 -C build-meson && meson test -C build-meson --suite qt`.
+
+- PR: https://github.com/oscarolar/vlc/pull/10 (fork, base master).
+- Commits:
+  - e6113b5 `qml: inject the player toolbar FSM dependencies`
+  - 133abec `qml: add an edge reveal mode to the player toolbars`
+  - 3365c11 `qml: keep the player top bar in fullscreen with pinned controls`
+- Baseline at ce4af2f: `--suite qt` 7/7 OK (log pkt-3008-baseline.log).
+- Step 2 dry-run: every §2 range matched at HEAD. `grep -rn fs-sensitivity modules/gui/qt` hits only the declaration in `modules/gui/qt/qt.cpp`, so it has no reader.
+- Rows 1–3, red: `tst_PlayerToolbarVisibilityFSM` added before the refactor. 3 failed with `ReferenceError: MainCtx is not defined` (log pkt-3008-red1.log).
+- Rows 1–3, green after commit 1: suite 8/8 OK (log pkt-3008-green1.log).
+- Rows 4–8, red: the new tests failed 7/12 with `edgeZone is not a function` and `non-existent property "revealMode"` (log pkt-3008-red2.log).
+- Rows 4–8, green after commit 2: 12/12 test functions passed (log pkt-3008-green2.log).
+- Test functions in `tst_PlayerToolbarVisibilityFSM` (10):
+  - Rows 1–8: `test_anywhere_moveShowsThenTimesOut`, `test_lockCounting`, `test_interactiveIgnoresMouse`, `test_edgeZone`, `test_edges_middleDoesNotReveal`, `test_edges_bottomReveals`, `test_edges_leaveHidesImmediately`, `test_edges_lockKeepsVisible`.
+  - Extra: `test_edges_keyboardShowsBoth` (§5.5) and `test_anywhere_ignoresPointerZone`.
+- Final gate after commit 3 (`-Dextra_checks=true`, reconfigured): `--suite qt` Ok 8, Fail 0 (log pkt-3008-gate.log).
+- Compiler warnings: none in `modules/gui/qt/qt.cpp`, `modules/gui/qt/maininterface/mainctx.cpp` or `modules/gui/qt/maininterface/mainctx.hpp`. The only lines are the image-wide `-Werror=unterminated-string-initialization` notice.
+- qmllint (Qt 6), before and after, on the FSM, `modules/gui/qt/player/qml/Player.qml` and `modules/gui/qt/util/qml/Helpers.qml`:
+  - Warning counts: FSM 38 → 37, Player.qml 546 → 566, Helpers.qml 5 → 5.
+  - Every new warning is unresolved-import noise (`MainCtx`, `VLCStyle`, `Helpers` unqualified, `mapToItem` on unknown `VideoSurface`) or an id accessed from inside `videoComponent`, the same pattern as the existing `playerToolbarVisibilityFSM` accesses.
+  - Logs: pkt-3008-qmllint-before.log and pkt-3008-qmllint-after.log.
+- Rulings applied:
+  - §5.1 (R0): default `anywhere`.
+  - §5.2 (R0): new `qt-controls-reveal-band`, 80 dp. The obsolete cleanup of `qt-fs-sensitivity` and `qt-fs-controller` is left to a separate MR.
+  - §5.3 (R0): one FSM with `revealedEdge`, exposed as `isTopVisible` and `isBottomVisible` for the two bars.
+- Deviations:
+  1. Test file: the caller suggested extending `tst_FSM`. That file tests the generic `FSM`, which this packet does not change, so the player FSM rows live in the new `modules/gui/qt/tests/tst_PlayerToolbarVisibilityFSM.qml`, as §3 specifies.
+  2. `edgeZone` takes separate top and bottom depths: `edgeZone(y, height, topBand, bottomBand)`. The bottom zone uses `max(band, controlBar.height)`, as §2 asks for PKT-3006; the top zone does the same with the top bar.
+  3. Option type: `qt-controls-reveal` is an integer list (0 anywhere, 1 edges), as specified. Row 10 therefore uses `--qt-controls-reveal=1`, not `=edges`.
+  4. Commit 3 also touches `modules/gui/qt/player/qml/TopBar.qml`, which is not in target_files. It adds a `fullScreen` input so `_showCenterText` also holds in fullscreen. Without it, the pinned top bar in fullscreen has no title, because `showCSD` is false there and `leftTitleText` is unpinned-only. This is required for row 9.
+  5. In edges mode a pointer-revealed bar has no timeout: it stays while the pointer is in its zone, per the "only when you hover near it" rule. Keyboard reveal keeps the 2 × timeout.
+  6. Mouse press, release and double-click no longer reveal the bars in edges mode, because `mouseMove` is ignored there. Only pointer moves are used.
+- MANUAL rows 9 and 10: pending, they need a desktop for screenshots.
+- Known test outside this gate: `test_src_player_lifecycle` in `--suite src` still segfaults on master in this image. Not run here.
 
 ## 7. Agent brief
 - [ ] **Step 1: Work clone** — on `nzxt`, `~/src/vlc`: `git switch -c master-pkt-3008-fullscreen-topbar-edge-reveal ce4af2f`
