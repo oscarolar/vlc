@@ -85,6 +85,11 @@ QString formatTooltip(const QString & tooltip)
     return formatted;
 }
 
+bool ConfigControl::isModified() const
+{
+    return !initialValue.isValid() || value() != initialValue;
+}
+
 ConfigControl *ConfigControl::createControl( module_config_t *p_item,
                                              QWidget *parent )
 {
@@ -144,6 +149,8 @@ ConfigControl *ConfigControl::createControl( module_config_t *p_item,
     default:
         break;
     }
+    if( p_control )
+        p_control->markClean();
     return p_control;
 }
 
@@ -697,6 +704,7 @@ ModuleListConfigControl::ModuleListConfigControl( module_config_t *_p_item,
     VStringConfigControl( _p_item )
 {
     groupBox = NULL;
+    text = NULL;
 
     /* Special Hack */
     if( !p_item->psz_text ) return;
@@ -810,6 +818,12 @@ void ModuleListConfigControl::finish( bool bycat )
         }
     }
     module_list_free( p_list );
+}
+
+QVariant ModuleListConfigControl::value() const
+{
+    /* no value without a text field */
+    return text ? QVariant( getValue() ) : QVariant();
 }
 
 QString ModuleListConfigControl::getValue() const
@@ -1489,6 +1503,17 @@ void KeySelectorControl::selectKey( KeyTableItem *item, enum ColumnIndex column 
         unset( item, column );
 
     delete d;
+}
+
+QVariant KeySelectorControl::value() const
+{
+    QStringList keys;
+    for( QTreeWidgetItemIterator it( table ); *it; ++it )
+    {
+        const KeyTableItem *item = static_cast<const KeyTableItem *>( *it );
+        keys << item->normal.keys << item->global.keys;
+    }
+    return keys;
 }
 
 void KeySelectorControl::doApply()

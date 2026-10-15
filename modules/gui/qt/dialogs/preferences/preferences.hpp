@@ -31,8 +31,7 @@ class PrefsTree;
 class SPrefsCatList;
 class SPrefsPanel;
 class QTreeWidgetItem;
-class QGroupBox;
-class QRadioButton;
+class QPushButton;
 class QWidget;
 class QCheckBox;
 class SearchLineEdit;
@@ -53,10 +52,12 @@ private:
     /* View stack */
     QStackedWidget *stack;
 
-    /* View selection */
+    /* View selection: the simple panels, with every setting behind one
+     * button (the All tree, or the Expert table) */
     enum { SIMPLE, ADVANCED, EXPERT };
-    QGroupBox *types;
-    QRadioButton *simple, *all, *expert;
+    QPushButton *viewButton;
+    QPushButton *expertButton;
+    void updateViewButtons( int view );
 
     /* Simple view components */
     QWidget *simple_split_widget;
@@ -86,6 +87,8 @@ private slots:
     void setExpert();
     void setAdvanced();
     void setSimple();
+    void toggleAllSettings();
+    void toggleExpert( bool );
 
     void changeExpertDesc( const QModelIndex &, const QModelIndex & );
     void changeAdvPanel( QTreeWidgetItem * );

@@ -37,6 +37,7 @@
 #include <QDialog>
 #include <QSet>
 #include <QContextMenuEvent>
+#include <QVariant>
 
 class QWidget;
 class QTreeWidget;
@@ -97,10 +98,19 @@ public:
     virtual void insertInto( QBoxLayout*, int index = 0 ) { Q_UNUSED( index ); }
     virtual void doApply() = 0;
     virtual void storeValue() = 0;
+    /** Remembers the value shown now, as the reference of isModified() */
+    void markClean() { initialValue = value(); }
+    /** Whether the user changed the value since markClean(); true when the
+     * value is unknown, so that such controls are always applied */
+    bool isModified() const;
 protected:
     ConfigControl( module_config_t *_p_conf ) : p_item( _p_conf ) {}
     virtual void changeVisibility( bool ) { }
+    /** The value shown, invalid when it cannot be compared */
+    virtual QVariant value() const { return QVariant(); }
     module_config_t *p_item;
+private:
+    QVariant initialValue;
 signals:
     void changed();
 };
@@ -117,6 +127,7 @@ public:
     void storeValue() override;
 protected:
     VIntConfigControl( module_config_t *i ) : ConfigControl(i) {}
+    QVariant value() const override { return getValue(); }
 };
 
 class IntegerConfigControl : public VIntConfigControl
@@ -228,6 +239,7 @@ public:
     void storeValue() override;
 protected:
     VFloatConfigControl( module_config_t *i ) : ConfigControl(i) {}
+    QVariant value() const override { return getValue(); }
 };
 
 class FloatConfigControl : public VFloatConfigControl
@@ -271,6 +283,7 @@ public:
     void storeValue() override;
 protected:
     VStringConfigControl( module_config_t *i ) : ConfigControl(i) {}
+    QVariant value() const override { return getValue(); }
 };
 
 class StringConfigControl : public VStringConfigControl
@@ -380,6 +393,7 @@ public slots:
     void onUpdate();
 protected:
     void changeVisibility( bool ) override;
+    QVariant value() const override;
 private:
     void finish( bool );
     void checkbox_lists(module_t*);
@@ -434,6 +448,8 @@ public:
     static KeyTableItem *find_conflict( QTreeWidget *, QString, KeyTableItem *, enum ColumnIndex );
 
 protected:
+    /** Every key of the table, so that an untouched table is not applied */
+    QVariant value() const override;
     bool eventFilter( QObject *, QEvent * ) override;
 #ifndef QT_NO_CONTEXTMENU
     void tableContextMenuEvent( QWidget *, QContextMenuEvent * );
