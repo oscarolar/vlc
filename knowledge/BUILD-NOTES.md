@@ -39,3 +39,11 @@ Read before implementing any packet.
 - An unqualified `implicitHeight` inside a `Rectangle` is that Rectangle's own (often 0), not the parent's.
 - The Figma community file returns HTTP 403 without a browser session; use the packet's proposed values and record it.
 - Measured: PKT-3001 0.2 h (est. 12 h).
+
+## Added after PKT-3027
+- Smoke-run the UI in the CI image to catch QML load errors: `QT_QPA_PLATFORM=offscreen timeout 25 ./build-meson/bin/vlc-static -I qt --aout dummy -vv 2>&1 | grep -i qml`. Without `--aout dummy` it crashes in PulseAudio; non-static `bin/vlc` fails ("process_pool"). The image has no medialibrary module, so library pages are unreachable.
+- Put QML widget logic that needs tests in `Helpers.qml` (VLC.Util).
+- QtTests linking `navigation_history.cpp` pull in the network model; branch master-pkt-3027 injects the node validator (util/navigation_history_node).
+- `check_packets.py` rejects backticked paths of new files not listed in `target_files`; write them as plain text.
+- Never edit sources while a build is running in the same worktree.
+- Measured: PKT-3027 0.4 h.
