@@ -27,7 +27,8 @@ depends_on: []
 upstream_ruling: needed
 target: fork
 mr_title: "qt: library sections, forward history and an address line on every page"
-status: ready
+status: review
+actual_h: 0.4
 ---
 
 # PKT-3027 — The library shows Videos, Music, Network streams and Playlists, with a clickable address line and back/forward
@@ -143,6 +144,10 @@ master's grouping-by-folder in the Video sort menu (`modules/gui/qt/medialibrary
 4. NOTE — the address line on library pages derives its crumbs from `History.viewPath` + the page `title`, not
    from a filesystem path: ML pages have no tree. `NetworkAddressbar` gets a `crumbs` input of `{display, uri}`;
    Browse keeps passing `{display, tree}`.
+6. NOTE (executor) — the link did pull more: `isNodeValid` needs `NetworkTreeItem`'s moc, which drags in
+   the whole network model. It moved to its own file (navigation_history_node.cpp, function
+   `isNavigationNodeValid`), and `NavigationHistory` now takes the validator in its constructor. The QtTest
+   passes a stand-in validator for row 4.
 5. **Split (T3, 20 h)**: 3027a forward history + button (rows 1–4, ~6 h, T2); 3027b sections (rows 5–7, 11, ~6 h,
    follows ruling 1 (R6)); 3027c address line everywhere (rows 8–10, ~8 h). 3027a can merge without any ruling.
 
@@ -158,7 +163,88 @@ docker --context nzxt run --rm -v ~/src/vlc:/vlc -w /vlc registry.videolan.org/v
 - Keyboard navigation (`Navigation.*`) and accessibility (`Accessible.*`) work on every new control.
 
 ### Evidence
-<Filled by the executor.>
+Executed 2026-10-15 on `nzxt`, worktree `~/src/vlc-wt/pkt-3027` (branch `master-pkt-3027-library-sections-address-bar`
+from `ce4af2f`), the CI image of §6, `meson setup build-meson -Dextra_checks=true`, `ninja -j8`.
+Logs: `~/src/logs/pkt-3027-*.log`.
+
+- Commits (one PR, the four commits of §1):
+  - `e186c63` qt: add a forward stack to the navigation history
+  - `52182ea` qml: show a forward button in the local top bar
+  - `18afee8` qt: regroup the navigation model into library sections
+  - `1e7fcaf` qml: show the address line in every page header
+- PR: https://github.com/oscarolar/vlc/pull/5 (fork, base `master`).
+- Step 2 dry-run: every range of §2 matched at `ce4af2f`. MLFoldersSettings.qml is still absent
+  (`git ls-files | grep -c MLFoldersSettings` gives 0).
+- Watched failing, then passing:
+  - Rows 1 to 4 (`pkt-3027-stepA-red.log`, `pkt-3027-stepB-red.log`, `pkt-3027-stepC-green.log`).
+    - Row 1 first failed with the placeholder expectation (Actual "video", Expected "home").
+    - The real tests then failed to compile because `next`, `isNextEmpty` and `nextEmptyChanged` did not exist.
+    - After the change, `test_qt_navigation_history` passed 6 of 6 functions: `testPreviousKeepsForward`,
+      `testNextRestores`, `testNextKeepsProperties`, `testPushClearsForward`, `testSkipInvalidBothWays` and
+      `testForwardCapped` (the 50-entry cap).
+  - Rows 5 to 7 (`pkt-3027-c3-red.log`, `pkt-3027-c3-green.log`).
+    - With the rewritten `test_qt_navigation_model`, 14 of 17 functions failed against the old model.
+    - After the change, 17 of 17 passed. The new functions are `testURIPlaylists`, `testURINetworkStreams`,
+      `testExpandNetworkStreams` and `testRetractNetworkStreams`.
+  - Rows 8 and 9 (`pkt-3027-c4-red.log`, `pkt-3027-c4-dedupe-red.log`, `pkt-3027-c4-green.log`).
+    - `tst_NetworkAddressbar` failed first because the Helpers functions did not exist.
+    - After the change, `test_overflow`, `test_click` and `test_pathCrumbs` passed.
+    - One more assertion, for a parent and default sub page with the same name, was added red and then passed.
+- Gate (`pkt-3027-gate.log`): `meson test -C build-meson --suite qt --print-errorlogs` gave Ok 9, Fail 0 (7 at base,
+  plus `test_qt_navigation_history` and `tst_NetworkAddressbar`).
+- Warnings: the touched C++ files were recompiled in the gate run with no compiler warning. The only warnings are the
+  generic cc1plus `-Werror=unterminated-string-initialization` notice and meson's configure notices, which baseline
+  has too.
+- qmllint, Qt 6 (`pkt-3027-qmllint-c2-*`, `-c3-*` and `-c4-*` logs). Warning counts per file, before and after:
+
+  | File | Before | After |
+  |---|---|---|
+  | LocalTopbar | 144 | 170 |
+  | MainDisplay | 492 | 506 |
+  | EmptyLabelButton | 32 | 32 |
+  | SideNavigationDelegate | 83 | 83 |
+  | Helpers | 5 | 5 |
+  | NetworkAddressbar | 131 | 133 |
+  | PageExt | 77 | 97 |
+  | tst_NetworkAddressbar (new) | n/a | 14 |
+
+  Every added line is an unresolved-VLC-type warning (`Widgets.*`, `Navigation`, `AccessibleCompat`, `Helpers`,
+  `VLC.Network` without qmltypes). There is no new semantic warning.
+- Runtime smoke: `vlc-static -I qt --aout dummy` with the offscreen platform loaded the interface with no QML error.
+  - This build has no media library module, so only the no-media-library sections could be reached.
+  - For one local run that was not committed, the start page was set to the Discover page and a console trace was
+    added. The loaded page was `streams/discover/services/all`, and its address line was
+    `Network streams > Discover > Services > Services`. That run led to the duplicate-crumb rule in `Helpers.pathCrumbs`.
+- Rows 10 and 11 (MANUAL): screenshots are still pending. The build environment has no display, so they must be taken
+  on a desktop build and attached to the PR.
+- Deviations:
+  - Tests:
+    - Rows 8 and 9 test the Helpers functions that NetworkAddressbar delegates to (`splitAddressCrumbs`,
+      `addressCrumbAction`, `pathCrumbs`), not an instance of the control. The QML test runner only loads VLC.Util,
+      and the control needs MainCtx and VLCStyle.
+    - Row 4 uses a stand-in validator (see §5.6). The real `NetworkTreeItem` check cannot be linked into a QtTest
+      without the network model.
+  - New files outside target_files:
+    - navigation_history_node.cpp and navigation_history_node.hpp hold the node validity check moved out of the history.
+    - Makefile.am also gets the new sources, the new QtTest and the new QML test, to keep the autotools lists in step.
+      This is not built here.
+  - Choices made in this packet:
+    - Forward button: the icon font has no forward arrow, so the back glyph is mirrored with a Scale transform.
+    - Section routing:
+      - Network streams is a `streams` page and Playlists a `playlists` page. Each is an inline `SectionLoader`
+        (a PageLoader that forwards the display margins) in MainDisplay.qml, so no new QML file was needed.
+      - Browse pages move from `network/...` to `streams/network/...`. Sort settings saved under the old keys are not
+        migrated.
+      - `EmptyLabelButton` now pushes `streams/network`.
+    - Sidebar: the `AccessibleCompat` ids become `networkStreamsNavBar` and `playlistsNavBar`, in place of
+      `browseNavBar` and `discoverNavBar`. Video and Music keep their own Playlists sub entries.
+    - Address line:
+      - It replaces the title label when `pagePrefix.length > 1`.
+      - Its crumbs come from the page path and the page title (§5.4). A last crumb named like its parent replaces
+        the parent.
+      - Its home button pushes `streams/network`, the Browse home where local folders are (R6).
+  - Baseline: the commit 1 edits were saved while the baseline build was running, which broke that build's link step.
+    The 7/7 result on `ce4af2f` is documented in BUILD-NOTES.
 
 ## 7. Agent brief
 - [ ] **Step 1: Work clone** — on `nzxt`, `cd ~/src/vlc && git switch -c master-pkt-3027-library-sections-address-bar ce4af2f`; build once with the §6 command → green.
