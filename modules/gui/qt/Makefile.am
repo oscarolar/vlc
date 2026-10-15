@@ -149,6 +149,8 @@ libqt_plugin_la_SOURCES = \
 	dialogs/preferences/preferences.hpp \
 	dialogs/preferences/preferences_widgets.cpp \
 	dialogs/preferences/preferences_widgets.hpp \
+	dialogs/preferences/prefs_merge.cpp \
+	dialogs/preferences/prefs_merge.hpp \
 	dialogs/preferences/simple_preferences.cpp \
 	dialogs/preferences/simple_preferences.hpp \
 	dialogs/sout/convert.cpp dialogs/sout/convert.hpp \
@@ -434,6 +436,7 @@ nodist_libqt_plugin_la_SOURCES = \
 	dialogs/preferences/expert_view.moc.cpp \
 	dialogs/preferences/preferences.moc.cpp \
 	dialogs/preferences/preferences_widgets.moc.cpp \
+	dialogs/preferences/prefs_merge.moc.cpp \
 	dialogs/preferences/simple_preferences.moc.cpp \
 	dialogs/sout/convert.moc.cpp \
 	dialogs/sout/profile_selector.moc.cpp \

@@ -178,6 +178,7 @@ void ExpertPrefsTableItem::setToDefault()
         cfg_item->value = cfg_item->orig;
 
     matches_default = true;
+    edited = true;
     updateValueDisplayString();
 }
 
@@ -186,6 +187,7 @@ void ExpertPrefsTableItem::toggleBoolean()
     assert( CONFIG_CLASS( getType() ) == CONFIG_ITEM_BOOL );
     /* Note, this modifies our local copy of the item only */
     cfg_item->value.i = !cfg_item->value.i;
+    edited = true;
     updateMatchesDefault();
     /* Note, display text is updated by the model for efficiency */
 }
@@ -421,6 +423,10 @@ bool ExpertPrefsTableModel::submit()
     for( int i= 0 ; i < items.count(); i++ )
     {
         ExpertPrefsTableItem *item = items[i];
+
+        /* other views may have changed what was not edited here */
+        if( !item->isEdited() )
+            continue;
 
         /* save from copy to actual */
         switch ( CONFIG_CLASS( item->getType() ) )

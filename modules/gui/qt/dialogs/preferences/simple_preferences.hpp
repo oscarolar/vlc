@@ -37,6 +37,8 @@
 #include "ui_sprefs_interface.h"
 #include "ui_sprefs_medialibrary.h"
 
+#include "dialogs/preferences/prefs_merge.hpp"
+
 class MLFoldersEditor;
 
 #ifdef _WIN32
@@ -48,18 +50,6 @@ class QLineEdit;
 class QLabel;
 class QPushButton;
 class QAbstractButton;
-
-enum {
-    SPrefsInterface = 0,
-    SPrefsAudio,
-    SPrefsVideo,
-    SPrefsSubtitles,
-    SPrefsInputAndCodecs,
-    SPrefsHotkeys,
-    SPrefsMediaLibrary,
-    SPrefsMax
-};
-#define SPrefsDefaultCat SPrefsInterface
 
 enum {
     CachingCustom = 0,
@@ -140,6 +130,7 @@ private:
     char *lang;
     MLFoldersEditor *mlFoldersEditor {};
     MLFoldersEditor *mlBannedFoldersEditor {};
+    AdvancedOptionsSection *advanced {};
 
 #ifdef _WIN32
     QList<QTreeWidgetItem *> listAsso;
