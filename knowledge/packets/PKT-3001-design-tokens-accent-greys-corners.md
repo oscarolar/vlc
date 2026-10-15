@@ -128,7 +128,7 @@ Rows are hypotheses read at `base_sha`; Step 2 confirms or rewrites them. No C++
 6. NOTE (Step 2 dry-run, 2026-10-15) — `grep -rn "radius:"` over `modules/gui/qt/player` and `modules/gui/qt/widgets/qml`
    finds 64 sites. Commit 2 converts these sites: `modules/gui/qt/widgets/qml/SliderExt.qml:48` (`radius_xsmall`),
    `modules/gui/qt/player/qml/SliderBar.qml:327` and `:436` (`radius_xsmall`), `modules/gui/qt/player/qml/SliderBar.qml:578` (`width / 2`), and
-   `modules/gui/qt/widgets/qml/ButtonExt.qml:48` (`radius_small`). `ButtonExt.qml:107` and `:121` already read `control.radius` and
+   `modules/gui/qt/widgets/qml/ButtonExt.qml:48` (`radius_small`). `modules/gui/qt/widgets/qml/ButtonExt.qml:107` and `:121` already read `control.radius` and
    `parent.radius`, so the token goes in the declaration at `:48`. The other sites are out of scope (later packets).
 
 ## 6. Definition of Done
@@ -167,7 +167,7 @@ Logs: `~/src/logs/pkt-3001-*.log`.
   - Spec facts that differ from the code:
     - Row 3 expects a white glyph, but the play button is an accent ring around a white disc with a black glyph. The
       commit recolours the ring only, so with the option set the ring turns blue and the disc and glyph stay as they are.
-    - `SliderBar.qml:327` `radius: implicitHeight` read the Rectangle's own implicit height, which is 0, so the track
+    - `modules/gui/qt/player/qml/SliderBar.qml:327` `radius: implicitHeight` read the Rectangle's own implicit height, which is 0, so the track
       was square before.
     - `SliderExt`'s 3 dp radius was already clamped to 2 dp by its 4 dp bar, so `radius_xsmall` draws exactly the same.
     - VLCStyle uses `MainCtx.dp`, not `VLCStyle.dp`.
