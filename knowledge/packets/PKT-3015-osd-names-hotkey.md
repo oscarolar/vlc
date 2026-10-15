@@ -20,7 +20,8 @@ depends_on: []
 upstream_ruling: needed
 target: fork
 mr_title: "hotkeys: show the pressed key under the action OSD"
-status: ready
+status: review
+actual_h: 0.6
 ---
 
 # PKT-3015 — The on-screen message also names the key that triggered it
@@ -111,6 +112,7 @@ keycode → name function exists (`vlc_keycode2str`). The packet is additive, be
    under the action line; pure module change, but relies on the text renderer keeping an empty first line (spike in
    Step 2). (b) Bottom-right placement — robust, but not under the message. (c) A core helper that composes both
    lines in `src/player/osd.c` — touches libvlccore API, rejected unless (a) fails.
+   **Spike outcome (2026-10-15): (a) failed, (b) taken.** The text renderer drops a leading empty line (also a leading NBSP line), so `"\nPressed C"` on a private channel is drawn over "Crop: 16:10" (Xvfb capture). The label is shown bottom-right in the OSD text style. Also found in the spike: snapshots skip the OSD channels but not private channels, so the label channel is flushed before `ACTIONID_SNAPSHOT`.
 3. NOTE — attribution relies on prepend order in `src/misc/variables.c:766-800`; if VideoLAN considers callback
    order an implementation detail, the alternative is a new `key-action-source` libvlc variable set by
    `vlc_key_to_action` (core change).
@@ -130,25 +132,48 @@ docker --context nzxt run --rm -v ~/src/vlc:/vlc -w /vlc registry.videolan.org/v
 - No change to `include/` (public API) unless §5.2 (c) or §5.3 is taken up.
 
 ### Evidence
-<Filled by the executor.>
+Executed 2026-10-15 on nzxt, worktree ~/src/vlc-wt/pkt-3015, CI image vlc-debian-unstable:20260611225331,
+`-Dextra_checks=true`, ninja -j8. Logs in ~/src/logs/pkt-3015-*.log, spike captures in ~/src/logs/pkt-3015-spike.
+
+- Branch `master-pkt-3015-osd-names-hotkey`, commits 6dd805c `hotkeys: track which key triggered an action`,
+  2cc6253 `hotkeys: show the pressed key under the action OSD`.
+- PR: https://github.com/oscarolar/vlc/pull/9
+- Rows 1-6 (+ extra `test_keymap_lookup`): `test_modules_control_hotkeys_osd` has 7 cases. All 7 failed against stubs
+  (row 1: `got "(null)", expected "Pressed C"`; rows 4-6: tracker assertions), log pkt-3015-rows-fail.log. After the
+  implementation: OK, log pkt-3015-rows-pass.log.
+- `meson test --suite modules`: 25 OK / 0 fail / 2 skip (pkt-3015-suite-modules.log).
+- `meson test --suite qt`: 7/7 OK. `--suite src`: 43 OK / 1 fail, the known `test_src_player_lifecycle` SIGSEGV
+  (pkt-3015-suite-qt-src.log).
+- extra_checks: forced rebuild of `modules/control/hotkeys.c` and the new test, 0 warnings (pkt-3015-extra-checks.log).
+- Step 2 prepend order: a throw-away `msg_Dbg` showed the hotkeys `key-pressed` callback logging 0x63 before
+  `key-action 95 key 0x63` (pkt-3015-spike run logs).
+- Rows 7-8 (headless, Xvfb + xcb_x11 + luaintf script driving `key-pressed`): C gives "Crop: 16:10" top-right and
+  "Pressed C" bottom-right; wheel up gives "Pressed Mouse Wheel Up"; a direct `key-action` crop shows no label;
+  `--no-hotkeys-osd-key` shows no label; `--no-osd` shows nothing; a snapshot taken right after a labelled key has no label.
+- PENDING: desktop screenshot pkt3015-osd.png with the Qt interface.
+- Deviations: §5.2 fell back to (b), bottom-right (see the spike outcome). Unbound keys are detected with a sorted
+  keycode list built at Open from `vlc_actions_get_keycodes` plus the wheel modes, and the tracker is also scoped to
+  the calling thread. Letters are upper-cased in the label (`vlc_keycode2str` returns "c"). Autotools files
+  (`modules/control/Makefile.am`, `test/Makefile.am`) and `po/POTFILES.in` were updated too. The commit and PR titles
+  keep the packet wording "under the action OSD"; the bodies explain the bottom-right placement.
 
 ## 7. Agent brief
-- [ ] **Step 1: Work clone** — on nzxt, `cd ~/src/vlc`, branch `master-pkt-3015-osd-names-hotkey` from `ce4af2f`;
+- [x] **Step 1: Work clone** — on nzxt, `cd ~/src/vlc`, branch `master-pkt-3015-osd-names-hotkey` from `ce4af2f`;
       §6 command → green.
-- [ ] **Step 2: Dry-run + spike** — re-read §2; confirm the prepend order (`src/misc/variables.c:766-800`) with a
+- [x] **Step 2: Dry-run + spike** — re-read §2; confirm the prepend order (`src/misc/variables.c:766-800`) with a
       `msg_Dbg` in a throw-away build; spike §5.2 (a) by hard-coding `"\nPressed X"` on a private channel and
       looking at a frame (screenshot to the MR). Write the outcome into §5.2.
-- [ ] **Step 3: Row 1 watched failing** — `modules/control/hotkeys_osd.h` with
+- [x] **Step 3: Row 1 watched failing** — `modules/control/hotkeys_osd.h` with
       `char *hotkeys_osd_KeyLabel(uint32_t keycode)` returning `NULL`; `test/modules/control/hotkeys_osd.c` row 1;
       `vlc_tests += {'name': 'test_modules_control_hotkeys_osd', …}` in `test/modules/meson.build` → FAIL.
-- [ ] **Step 4: Rows 2–6** — label formatting (`vlc_keycode2str`, `_("Pressed %s")`) and the tracker
+- [x] **Step 4: Rows 2–6** — label formatting (`vlc_keycode2str`, `_("Pressed %s")`) and the tracker
       (`struct hotkeys_key_tracker { uint32_t key; bool valid; }` + `KeyPressed`/`TakeForAction`/`Invalidate`).
       Commit 1 `hotkeys: track which key triggered an action`.
-- [ ] **Step 5: Wire it** — in `Open` add a `key-pressed` callback on `vlc_object_instance(intf)` that records the
+- [x] **Step 5: Wire it** — in `Open` add a `key-pressed` callback on `vlc_object_instance(intf)` that records the
       key (mutex in `intf_sys_t`, callbacks can come from the vout window thread); in `ActionCallback` take the key
       before `handle_action` and, after it, render the label on each tracked vout's private channel (registered in
       `player_on_vout_started`, `:1157-1172`); `add_bool("hotkeys-osd-key", true, …)` in the module block. Remove
       the callback in `Close`. Rows 7–8 by hand. Commit 2 `hotkeys: show the pressed key under the action OSD`.
-- [ ] **Step 6: Whole gate** — §6 command (suite `modules`) plus `meson test -C build-meson --suite qt` to prove Qt
+- [x] **Step 6: Whole gate** — §6 command (suite `modules`) plus `meson test -C build-meson --suite qt` to prove Qt
       hotkeys are unaffected; summaries into §6 Evidence.
-- [ ] **Step 7: MR** — PR to the fork github.com/oscarolar/vlc (base `master`), §5.1–5.3 as recorded rulings; `status: review`.
+- [x] **Step 7: MR** — PR to the fork github.com/oscarolar/vlc (base `master`), §5.1–5.3 as recorded rulings; `status: review`.
