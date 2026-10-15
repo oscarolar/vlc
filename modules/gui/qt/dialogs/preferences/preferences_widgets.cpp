@@ -65,6 +65,9 @@
 #include <QClipboard>
 #include <QFont>
 #include <QToolButton>
+#include <QHBoxLayout>
+#include <QStyle>
+#include <QWhatsThis>
 
 #define MINWIDTH_BOX 90
 #define LAST_COLUMN 10
@@ -83,6 +86,117 @@ QString formatTooltip(const QString & tooltip)
     "margin-right:0px; -qt-block-indent:0; text-indent:0px;\">" +
     text + "</p></body></html>";
     return formatted;
+}
+
+namespace {
+
+/* Info button shown after an option label, mirroring the label visibility */
+class ConfigHelpButton : public QToolButton
+{
+public:
+    ConfigHelpButton( QWidget *anchor, const QString &help )
+        : QToolButton( anchor->parentWidget() ), anchor( anchor )
+    {
+        setIcon( style()->standardIcon( QStyle::SP_MessageBoxInformation ) );
+        setIconSize( QSize( 16, 16 ) );
+        setAutoRaise( true );
+        setFocusPolicy( Qt::StrongFocus );
+        setCursor( Qt::WhatsThisCursor );
+        setAccessibleName( qtr( "More information" ) );
+        setToolTip( help );
+        setWhatsThis( help );
+        connect( this, &QToolButton::clicked, this, [this]() {
+            QWhatsThis::showText( mapToGlobal( rect().bottomLeft() ),
+                                  whatsThis(), this );
+        } );
+        /* stays hidden until it is laid out next to its anchor */
+        hide();
+        anchor->installEventFilter( this );
+    }
+
+    bool isPlaced() const { return placed; }
+
+    /* now in the row widget wrapping the anchor */
+    void setPlaced()
+    {
+        placed = true;
+        show();
+        parentWidget()->setVisible( anchor->isVisibleTo( parentWidget() ) );
+    }
+
+protected:
+    bool eventFilter( QObject *watched, QEvent *event ) override
+    {
+        /* the whole row follows the anchor, leaving no empty row behind */
+        if( placed && watched == anchor
+         && ( event->type() == QEvent::ShowToParent
+           || event->type() == QEvent::HideToParent ) )
+            parentWidget()->setVisible( event->type() == QEvent::ShowToParent );
+        return QToolButton::eventFilter( watched, event );
+    }
+
+private:
+    QWidget *anchor;
+    bool placed = false;
+};
+
+}
+
+ConfigControl::~ConfigControl()
+{
+    /* never laid out (e.g. the expert edit dialog): not owned by a widget */
+    if( helpButton && !helpButton->parent() )
+        delete helpButton;
+}
+
+void ConfigControl::attachHelp( QLabel *label, QWidget *widget,
+                                const QString &longtext )
+{
+    if( longtext.isEmpty() )
+        return;
+
+    const QString tip = formatTooltip( longtext );
+    if( widget )
+        widget->setToolTip( tip );
+    if( label )
+        label->setToolTip( tip );
+
+    QWidget *anchor = label ? static_cast<QWidget *>( label ) : widget;
+    /* one info button per anchor, even if the anchor is shared */
+    if( !anchor || helpButton || anchor->property( "vlc-help-button" ).toBool() )
+        return;
+    anchor->setProperty( "vlc-help-button", true );
+
+    helpAnchor = anchor;
+    helpButton = new ConfigHelpButton( anchor, tip );
+
+    /* controls bound to an existing form are already laid out */
+    if( anchor->parentWidget() && anchor->parentWidget()->layout() )
+        placeHelpButton( anchor->parentWidget()->layout() );
+}
+
+void ConfigControl::placeHelpButton( QLayout *layout )
+{
+    ConfigHelpButton *button = static_cast<ConfigHelpButton *>( helpButton.data() );
+    if( !button || !helpAnchor || !layout || button->isPlaced() )
+        return;
+
+    QWidget *row = new QWidget;
+    QLayoutItem *old = layout->replaceWidget( helpAnchor, row );
+    if( !old )
+    {
+        delete row;
+        return;
+    }
+    delete old;
+
+    QHBoxLayout *rowLayout = new QHBoxLayout( row );
+    rowLayout->setContentsMargins( 0, 0, 0, 0 );
+    rowLayout->setSpacing( 2 );
+    rowLayout->addWidget( helpAnchor );
+    rowLayout->addWidget( button );
+    rowLayout->addStretch( 1 );
+    button->setPlaced();
 }
 
 ConfigControl *ConfigControl::createControl( module_config_t *p_item,
@@ -153,7 +267,10 @@ ConfigControl *ConfigControl::createControl( module_config_t *item,
 {
     ConfigControl *control = createControl( item, parent );
     if ( control )
+    {
         control->insertInto( l, line );
+        control->placeHelpButton( l );
+    }
     return control;
 }
 
@@ -163,7 +280,10 @@ ConfigControl *ConfigControl::createControl( module_config_t *item,
 {
     ConfigControl *control = createControl( item, parent );
     if ( control )
+    {
         control->insertInto( l, index );
+        control->placeHelpButton( l );
+    }
     return control;
 }
 
@@ -258,12 +378,7 @@ void StringConfigControl::finish()
 {
     text->setText( qfu(p_item->value.psz) );
     if( p_item->psz_longtext )
-    {
-        QString tipText = qfut(p_item->psz_longtext);
-        text->setToolTip( formatTooltip(tipText) );
-        if( label )
-            label->setToolTip( formatTooltip(tipText) );
-    }
+        attachHelp( label, text, qfut(p_item->psz_longtext) );
     if( label )
         label->setBuddy( text );
 }
@@ -366,12 +481,7 @@ void FileConfigControl::finish()
 {
     text->setText( qfu(p_item->value.psz) );
     if( p_item->psz_longtext )
-    {
-        QString tipText = qfut(p_item->psz_longtext);
-        text->setToolTip( formatTooltip(tipText) );
-        if( label )
-            label->setToolTip( formatTooltip(tipText) );
-    }
+        attachHelp( label, text, qfut(p_item->psz_longtext) );
     if( label )
         label->setBuddy( text );
 }
@@ -422,9 +532,7 @@ FontConfigControl::FontConfigControl( module_config_t *_p_item, QWidget *p ) :
     font->setCurrentFont( QFont( qfu( p_item->value.psz) ) );
 
     if( p_item->psz_longtext )
-    {
-        label->setToolTip( formatTooltip( qfut(p_item->psz_longtext) ) );
-    }
+        attachHelp( label, font, qfut(p_item->psz_longtext) );
 }
 
 FontConfigControl::FontConfigControl( module_config_t *_p_item,
@@ -437,9 +545,7 @@ FontConfigControl::FontConfigControl( module_config_t *_p_item,
     font->setCurrentFont( QFont( qfu( p_item->value.psz) ) );
 
     if( p_item->psz_longtext )
-    {
-        label->setToolTip( formatTooltip( qfut(p_item->psz_longtext) ) );
-    }
+        attachHelp( label, font, qfut(p_item->psz_longtext) );
 }
 
 void FontConfigControl::insertInto( QGridLayout *l, int line )
@@ -538,12 +644,7 @@ void StringListConfigControl::finish(module_config_t *p_module_config )
     free( values );
 
     if( p_module_config->psz_longtext )
-    {
-        QString tipText = qfut(p_module_config->psz_longtext);
-        combo->setToolTip( formatTooltip(tipText) );
-        if( label )
-            label->setToolTip( formatTooltip(tipText) );
-    }
+        attachHelp( label, combo, qfut(p_module_config->psz_longtext) );
     if( label )
         label->setBuddy( combo );
 }
@@ -670,12 +771,7 @@ void ModuleConfigControl::finish( )
     module_list_free( p_list );
 
     if( p_item->psz_longtext )
-    {
-        QString tipText = qfut(p_item->psz_longtext);
-        combo->setToolTip( formatTooltip(tipText) );
-        if( label )
-            label->setToolTip( formatTooltip(tipText) );
-    }
+        attachHelp( label, combo, qfut(p_item->psz_longtext) );
     if( label )
         label->setBuddy( combo );
 }
@@ -717,7 +813,7 @@ ModuleListConfigControl::ModuleListConfigControl( module_config_t *_p_item,
     layoutGroupBox->addWidget( text, boxline, 0, 1, 2 );
 
     if( p_item->psz_longtext )
-        text->setToolTip( formatTooltip( qfut( p_item->psz_longtext) ) );
+        attachHelp( nullptr, text, qfut( p_item->psz_longtext ) );
 }
 
 void ModuleListConfigControl::insertInto( QGridLayout *l, int line )
@@ -904,12 +1000,7 @@ void IntegerConfigControl::finish()
     spin->setValue( p_item->value.i );
 
     if( p_item->psz_longtext )
-    {
-        QString tipText = qfut(p_item->psz_longtext);
-        spin->setToolTip( formatTooltip(tipText) );
-        if( label )
-            label->setToolTip( formatTooltip(tipText) );
-    }
+        attachHelp( label, spin, qfut(p_item->psz_longtext) );
     if( label )
         label->setBuddy( spin );
 }
@@ -958,12 +1049,7 @@ IntegerRangeSliderConfigControl::IntegerRangeSliderConfigControl(
     slider->setMinimum( p_item->min.i < INT_MIN ? INT_MIN : p_item->min.i );
     slider->setValue( p_item->value.i );
     if( p_item->psz_longtext )
-    {
-        QString tipText = qfut(p_item->psz_longtext);
-        slider->setToolTip( formatTooltip(tipText) );
-        if( label )
-            label->setToolTip( formatTooltip(tipText) );
-    }
+        attachHelp( label, slider, qfut(p_item->psz_longtext) );
     if( label )
         label->setBuddy( slider );
 }
@@ -1040,12 +1126,7 @@ void IntegerListConfigControl::finish( module_config_t *p_module_config )
     free( texts );
     free( values );
     if( p_item->psz_longtext )
-    {
-        QString tipText = qfut(p_item->psz_longtext );
-        combo->setToolTip( formatTooltip(tipText) );
-        if( label )
-            label->setToolTip( formatTooltip(tipText) );
-    }
+        attachHelp( label, combo, qfut(p_item->psz_longtext) );
     if( label )
         label->setBuddy( combo );
 }
@@ -1093,7 +1174,7 @@ void BoolConfigControl::finish()
 {
     checkbox->setChecked( p_item->value.i );
     if( p_item->psz_longtext )
-        checkbox->setToolTip( formatTooltip(qfut(p_item->psz_longtext)) );
+        attachHelp( nullptr, checkbox, qfut(p_item->psz_longtext) );
 }
 
 void BoolConfigControl::changeVisibility( bool visible )
@@ -1149,10 +1230,7 @@ void ColorConfigControl::finish()
 
     label->setText( qfut(p_item->psz_text) );
     if( p_item->psz_longtext )
-    {
-        label->setToolTip( formatTooltip(qfut(p_item->psz_longtext)) );
-        color_but->setToolTip( formatTooltip(qfut(p_item->psz_longtext)) );
-    }
+        attachHelp( label, color_but, qfut(p_item->psz_longtext) );
 
     BUTTONACT( color_but, &ColorConfigControl::selectColor );
 }
@@ -1239,12 +1317,7 @@ void FloatConfigControl::finish()
     spin->setSingleStep( 0.1 );
     spin->setValue( (double)p_item->value.f );
     if( p_item->psz_longtext )
-    {
-        QString tipText = qfut(p_item->psz_longtext);
-        spin->setToolTip( formatTooltip(tipText) );
-        if( label )
-            label->setToolTip( formatTooltip(tipText) );
-    }
+        attachHelp( label, spin, qfut(p_item->psz_longtext) );
     if( label )
         label->setBuddy( spin );
 }

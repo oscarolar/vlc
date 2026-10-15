@@ -37,12 +37,15 @@
 #include <QDialog>
 #include <QSet>
 #include <QContextMenuEvent>
+#include <QPointer>
+#include <QToolButton>
 
 class QWidget;
 class QTreeWidget;
 class QGroupBox;
 class QGridLayout;
 class QBoxLayout;
+class QLayout;
 class SearchLineEdit;
 class QDoubleSpinBox;
 class QCheckBox;
@@ -95,12 +98,22 @@ public:
     virtual void insertInto( QGridLayout*, int row = 0 ) { Q_UNUSED( row ); }
     /** Inserts control into an existing box layout */
     virtual void insertInto( QBoxLayout*, int index = 0 ) { Q_UNUSED( index ); }
+    /** Puts the info button after its label, once the label is in \p layout */
+    void placeHelpButton( QLayout *layout );
+    virtual ~ConfigControl();
     virtual void doApply() = 0;
     virtual void storeValue() = 0;
 protected:
     ConfigControl( module_config_t *_p_conf ) : p_item( _p_conf ) {}
     virtual void changeVisibility( bool ) { }
+    /** Shows the long help of the option: tooltip on the label and the
+     * widget, plus an info button after the label (after the widget when
+     * there is no label) for keyboard and touch users */
+    void attachHelp( QLabel *label, QWidget *widget, const QString &longtext );
     module_config_t *p_item;
+private:
+    QPointer<QToolButton> helpButton;
+    QPointer<QWidget> helpAnchor;
 signals:
     void changed();
 };
