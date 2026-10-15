@@ -175,7 +175,13 @@ QtObject {
     readonly property int button_width_normal: MainCtx.dp(96, scale)
     readonly property int button_width_large: MainCtx.dp(128, scale)
 
-    readonly property real button_radius: MainCtx.dp(4, scale)
+    //corner radii, use these for new controls
+    readonly property real radius_xsmall: MainCtx.dp(2, scale)
+    readonly property real radius_small: MainCtx.dp(4, scale)
+    readonly property real radius_normal: MainCtx.dp(6, scale)
+    readonly property real radius_large: MainCtx.dp(8, scale)
+
+    readonly property real button_radius: radius_small
 
     readonly property int contextButton_width: icon_normal
     readonly property int contextButton_margin: margin_xxsmall
@@ -186,7 +192,7 @@ QtObject {
     readonly property int checkButton_margins: MainCtx.dp(4, scale)
     readonly property int checkButton_handle_margins: MainCtx.dp(2, scale)
 
-    readonly property int navBoxButton_radius: MainCtx.dp(8, scale)
+    readonly property int navBoxButton_radius: radius_large
 
     readonly property int table_section_width: MainCtx.dp(32, scale)
     readonly property int table_section_text_margin: MainCtx.dp(10, scale)
@@ -203,7 +209,7 @@ QtObject {
     readonly property int gridCover_video_height: ( gridCover_video_width * 10.0 ) / 16
     readonly property int gridCover_video_border: MainCtx.dp(4, scale)
 
-    readonly property int gridCover_radius: MainCtx.dp(4, scale)
+    readonly property int gridCover_radius: radius_small
 
     readonly property int expandCover_music_height: MainCtx.dp(171, scale)
     readonly property int expandCover_music_width: MainCtx.dp(171, scale)
@@ -212,7 +218,7 @@ QtObject {
 
     readonly property int artistGridCover_radius: MainCtx.dp(90, scale)
 
-    readonly property real mainView_topLeftRadius: MainCtx.dp(8, scale)
+    readonly property real mainView_topLeftRadius: radius_large
 
     //GridItem
     readonly property int gridItemTitle_topMargin: margin_xsmall + margin_xxxsmall
