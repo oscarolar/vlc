@@ -17,7 +17,6 @@
  *****************************************************************************/
 import QtQuick
 
-import VLC.MainInterface
 import VLC.Util
 
 /**
@@ -58,10 +57,15 @@ FSM {
     //exposed internal states
     property alias isVisible: fsmVisible.active
 
-    property int lockCount: 0 // Track the number of locks
-    property int timeoutDuration: MainCtx.mouseHideTimeout
+    //dependencies, bound by the user of the state machine
+    property bool isInteractive: false
+    property bool hasEmbededVideo: false
+    property int hideTimeout: 1000
 
-    initialState: ((Player.isInteractive && MainCtx.hasEmbededVideo))
+    property int lockCount: 0 // Track the number of locks
+    property int timeoutDuration: hideTimeout
+
+    initialState: ((fsm.isInteractive && fsm.hasEmbededVideo))
                   ? fsmHidden : fsmVisible
  
     signalMap: ({
@@ -82,7 +86,7 @@ FSM {
         FSMState {
             id: fsmNormalVisible
 
-            initialState: MainCtx.hasEmbededVideo ? fsmVideoMode : fsmAudioMode
+            initialState: fsm.hasEmbededVideo ? fsmVideoMode : fsmAudioMode
  
             transitions: ({
                 lock: {
@@ -96,7 +100,7 @@ FSM {
  
                 transitions: ({
                     updateVideoEmbed: {
-                        guard: () => MainCtx.hasEmbededVideo,
+                        guard: () => fsm.hasEmbededVideo,
                         target: fsmVideoMode
                     }
                 })
@@ -108,7 +112,7 @@ FSM {
                 function enter() {
                     timeout.interval = fsm.timeoutDuration;
 
-                    if (!Player.isInteractive)
+                    if (!fsm.isInteractive)
                         timeout.restart();
                 }
 
@@ -118,7 +122,7 @@ FSM {
  
                 transitions: ({
                     updateVideoEmbed: {
-                        guard: () => !MainCtx.hasEmbededVideo,
+                        guard: () => !fsm.hasEmbededVideo,
                         target: fsmAudioMode
                     },
                     askShow: {
@@ -128,16 +132,16 @@ FSM {
                         target: fsmHidden,
                     },
                     mouseMove: {
-                        guard: () => !Player.isInteractive,
+                        guard: () => !fsm.isInteractive,
                         action: () => { 
-                            fsm.timeoutDuration = MainCtx.mouseHideTimeout;
+                            fsm.timeoutDuration = fsm.hideTimeout;
                         },
                         target: fsmVideoMode
                     },
                     keyboardMove: {
-                        guard: () => !Player.isInteractive,
+                        guard: () => !fsm.isInteractive,
                         action: () => { 
-                            fsm.timeoutDuration = MainCtx.mouseHideTimeout * 2
+                            fsm.timeoutDuration = fsm.hideTimeout * 2
                         },
                         target: fsmVideoMode
                     }
@@ -175,16 +179,16 @@ FSM {
 
         transitions: ({
             mouseMove: {
-                guard: () => !Player.isInteractive,
+                guard: () => !fsm.isInteractive,
                 action: () => {
-                    fsm.timeoutDuration = MainCtx.mouseHideTimeout
+                    fsm.timeoutDuration = fsm.hideTimeout
                 },
                 target: fsmVisible
             },
             keyboardMove: {
-                guard: () => !Player.isInteractive,
+                guard: () => !fsm.isInteractive,
                 action: () => {
-                    fsm.timeoutDuration = MainCtx.mouseHideTimeout * 2
+                    fsm.timeoutDuration = fsm.hideTimeout * 2
                 },
                 target: fsmVisible
             },
@@ -192,7 +196,7 @@ FSM {
                 target: fsmVisible
             },
             updateVideoEmbed: {
-                guard: () => !MainCtx.hasEmbededVideo,
+                guard: () => !fsm.hasEmbededVideo,
                 target: fsmVisible
             },
         })

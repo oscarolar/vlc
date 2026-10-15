@@ -953,6 +953,7 @@ qml_modules += {
 
 qml_tests = {
     'tst_FSM': files('tests/tst_FSM.qml'),
+    'tst_PlayerToolbarVisibilityFSM': files('tests/tst_PlayerToolbarVisibilityFSM.qml'),
 }
 
 qmllibs = []

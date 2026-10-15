@@ -135,6 +135,10 @@ FocusScope {
     PlayerToolbarVisibilityFSM {
         id: playerToolbarVisibilityFSM
 
+        isInteractive: Player.isInteractive
+        hasEmbededVideo: MainCtx.hasEmbededVideo
+        hideTimeout: MainCtx.mouseHideTimeout
+
         onForceUnlock:{
             controlBar.forceUnlock()
 
