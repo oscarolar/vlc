@@ -266,6 +266,16 @@ static void ShowDialog   ( intf_thread_t *, int, int, intf_dialog_args_t * );
 
 #define FULLSCREEN_CONTROL_PIXELS N_( "Fullscreen controller mouse sensitivity" )
 
+#define QT_CONTROLS_REVEAL_TEXT N_( "Show the video controls" )
+#define QT_CONTROLS_REVEAL_LONGTEXT N_( "Choose when the top bar and the control bar " \
+    "appear over the video: on any mouse move until the mouse hide timeout, or each one " \
+    "only while the mouse is near its edge of the window." )
+
+#define QT_CONTROLS_REVEAL_BAND_TEXT N_( "Distance from the edge that shows the video controls" )
+#define QT_CONTROLS_REVEAL_BAND_LONGTEXT N_( "When the video controls are shown near the edges, " \
+    "distance from the top or bottom edge of the window, in device-independent pixels, " \
+    "within which the mouse shows the bar of that edge." )
+
 #define QT_COMPOSITOR_TEXT N_("Select Qt video integration backend")
 #define QT_COMPOSITOR_LONGTEXT N_("Select Qt video integration backend. Use with care, the interface may not start if an incompatible compositor is selected")
 
@@ -313,6 +323,12 @@ static const int i_raise_list[] =
 
 static const char *const psz_raise_list_text[] =
     { N_( "Never" ), N_( "Video" ), N_( "Audio" ), _( "Audio/Video" ) };
+
+static const int i_controls_reveal_list[] =
+    { MainCtx::CONTROLS_REVEAL_ANYWHERE, MainCtx::CONTROLS_REVEAL_EDGES };
+
+static const char *const psz_controls_reveal_list_text[] =
+    { N_( "On any mouse move" ), N_( "Near the window edges" ) };
 
 static const char *const compositor_vlc[] = {
     "auto",
@@ -458,6 +474,13 @@ vlc_module_begin ()
 
     add_integer_with_range( "qt-fs-sensitivity", 3, 0, 4000, FULLSCREEN_CONTROL_PIXELS,
             nullptr)
+
+    add_integer( "qt-controls-reveal", MainCtx::CONTROLS_REVEAL_ANYWHERE,
+                 QT_CONTROLS_REVEAL_TEXT, QT_CONTROLS_REVEAL_LONGTEXT )
+            change_integer_list( i_controls_reveal_list, psz_controls_reveal_list_text )
+
+    add_integer_with_range( "qt-controls-reveal-band", 80, 1, 1000,
+                            QT_CONTROLS_REVEAL_BAND_TEXT, QT_CONTROLS_REVEAL_BAND_LONGTEXT )
 
     add_integer( "qt-auto-raise", MainCtx::RAISE_VIDEO, AUTORAISE_ON_PLAYBACK_TEXT,
                  AUTORAISE_ON_PLAYBACK_LONGTEXT )

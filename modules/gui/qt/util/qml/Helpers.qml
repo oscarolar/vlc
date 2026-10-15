@@ -22,6 +22,14 @@ import QtQuick
 
 QtObject {
 
+    // bit flags, see edgeZone()
+    enum Edge {
+        None = 0,
+        Top = 1,
+        Bottom = 2,
+        Both = 3
+    }
+
     function clamp(num : real, min : real, max : real) : real {
       return num <= min ? min : num >= max ? max : num;
     }
@@ -55,6 +63,16 @@ QtObject {
 
     function pointInRadius(x: real, y: real, radius: real) : bool {
          return (x * x + y * y < radius * radius)
+    }
+
+    // returns the Edge zone holding the vertical position `y` of an item of
+    // height `height`, given the depth of the top and bottom zones
+    function edgeZone(y: real, height: real, topBand: real, bottomBand: real) : int {
+        if (y <= topBand)
+            return Helpers.Edge.Top
+        if (y >= height - bottomBand)
+            return Helpers.Edge.Bottom
+        return Helpers.Edge.None
     }
 
     // checks if point `pos` lies in rect `rect`

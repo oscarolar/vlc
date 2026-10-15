@@ -51,6 +51,7 @@ FocusScope{
     property bool showCSD: false
     property bool showToolbar: false
     property bool pinControls: false
+    property bool fullScreen: false
 
     readonly property ColorContext colorContext: ColorContext {
         id: theme
@@ -61,7 +62,7 @@ FocusScope{
 
     property bool _showTopBar: (pinControls === false || showToolbar === false)
 
-    property bool _showCenterText: (pinControls && showToolbar === false && showCSD)
+    property bool _showCenterText: (pinControls && showToolbar === false && (showCSD || fullScreen))
 
     readonly property int _sideMargin: VLCStyle.margin_small + sideMargin
 
