@@ -29,7 +29,8 @@ depends_on: []
 upstream_ruling: needed
 target: fork
 mr_title: "qt: show advanced options under each simple preferences panel"
-status: ready
+status: review
+actual_h: 0.5
 ---
 
 # PKT-3036 — One preferences page per category: basic options first, advanced below, info icons
@@ -174,25 +175,51 @@ docker --context nzxt run --rm -v ~/src/vlc:/vlc -w /vlc registry.videolan.org/v
 - Keyboard navigation (`Navigation.*`) and accessibility (`Accessible.*`) work on every new control.
 
 ### Evidence
-<Filled by the executor: build tail, `meson test` summary, screenshots, MR URL.>
+Executed 2026-10-15 on nzxt, worktree ~/src/vlc-wt/pkt-3036 from ce4af2f, CI image registry.videolan.org/vlc-debian-unstable:20260611225331, meson setup build-meson -Dextra_checks=true, ninja -j8. Logs: ~/src/logs/pkt-3036-*.log.
+
+Split as §5.5 (one PR each, fork only):
+- 3036a, branch master-pkt-3036a-info-button: dcd6f42 qt: preferences: add an info button to config controls. PR https://github.com/oscarolar/vlc/pull/6
+- 3036b, branch master-pkt-3036b-advanced-options (from ce4af2f, independent of 3036a): bf3d5d5 qt: preferences: list a panel's remaining options under Advanced options; fb9f34b qt: preferences: apply advanced options from simple panels on save. PR https://github.com/oscarolar/vlc/pull/7
+- 3036c, branch master-pkt-3036c-fold-view-selector (stacked on 3036b): 1df40ad qt: preferences: fold the view selector. PR https://github.com/oscarolar/vlc/pull/8
+- Packet branch master-pkt-3036-one-preferences-tree = all four (dcd6f42, 25409ad, c39a710, 2af459f).
+
+Step 2 dry-run: preferences_widgets.cpp links alone in a QtTest (plus searchlineedit, customwidgets, animators, vlchotkeyconverter, qt_dirs), and so do complete_preferences.cpp and expert_model.cpp. SPrefsPanel and PrefsDialog pull MainCtx, DialogsProvider and the media library, so row 5 tests AdvancedOptionsSection (the Advanced group the panel embeds), row 6 tests AdvancedOptionsSection + AdvPrefsPanel + ExpertPrefsTableModel applied in the save order, and the PrefsDialog::save wiring itself is MANUAL.
+
+Tests (QtTest, offscreen):
+- test_qt_config_control_help (row 7): testInfoButton, testInfoButtonAfterLabel, testInfoButtonOnExistingForm, testNoInfoButtonWithoutLongtext, testInfoButtonFollowsVisibility. Red: 4 failed ('info' returned FALSE). Green: 7/7 functions.
+- test_qt_prefs_merge (rows 1-6): testSubtitlesRemaining, testEmptyShownIsWholeSubcat, testEmptySectionsDropped, testPanelMappingDisjoint, testHotkeysAdvancedIsJumpSizes, testAdvancedControlApplied, testSaveAppliesAllBuiltViews, testExpertSubmitsEditedOnly. Red against a skeleton prefs_merge: 8 failed (expert row failed on the stale write). Green: 10/10 functions.
+- Gate --suite qt: baseline ce4af2f 7/7 OK; 3036a 8/8; 3036b 8/8; 3036c (b+c) 8/8; full packet branch 9/9 OK.
+- -Dextra_checks=true: no warning in dialogs/preferences or the new tests (remaining warnings are pre-existing: extended_panels, open_panels, menus).
+- No QML touched, so no qmllint diff.
+- Independent code review (read-only) found: hotkey table always applied (fixed: KeySelectorControl::value() + markClean), empty row left when a label is hidden (fixed: the row follows the label). Dirty flags are not reset after save: not an issue, the dialog is WA_DeleteOnClose.
+
+Deviations:
+- Hotkeys Advanced list is not empty: SUBCAT_INTERFACE_HOTKEYS also holds the four jump sizes, which the panel does not show; they are listed and tested.
+- Save applying every built view needed write-only-what-changed semantics to avoid stale overwrites: ConfigControl::markClean/isModified, and an edited flag in the Expert table (expert_model.hpp/.cpp, expert_view.cpp, outside the target list). Options written by panel code (caching presets, volume, fullscreen screen, intf, freetype opacity) are excluded from every Advanced list (handledByPanels).
+- The panel enum moved from simple_preferences.hpp to prefs_merge.hpp so tests need no generated ui headers.
+- qt.cpp unchanged: qt-initial-prefs-view values and texts still fit (Simple/Advanced/Expert).
+- Makefile.am lists prefs_merge (sources + moc) but not the new tests (meson only).
+- PKT-3037: git merge-tree against master-pkt-3037-subtitle-fuzziness-in-words is clean; sub-autodetect-fuzzy then leaves the Subtitles Advanced list by itself.
+
+MANUAL (pending, need a desktop): row 8 screenshots (Subtitles panel with Advanced collapsed and expanded, info button popup, keyboard Tab through info buttons); PrefsDialog::save with a change in an Advanced group and one in the All view, reopen; 3036c bottom bar in Simple and All views, Table view, --qt-initial-prefs-view=1 and 2.
 
 ## 7. Agent brief
-- [ ] **Step 1: Work clone** — on `nzxt:~/src/vlc`, `git switch -c master-pkt-3036-one-preferences-tree ce4af2f`; §6
+- [x] **Step 1: Work clone** — on `nzxt:~/src/vlc`, `git switch -c master-pkt-3036-one-preferences-tree ce4af2f`; §6
       command once → green.
-- [ ] **Step 2: Dry-run** — re-read §2; try linking a minimal widget test against `preferences_widgets.cpp`
+- [x] **Step 2: Dry-run** — re-read §2; try linking a minimal widget test against `preferences_widgets.cpp`
       (+ `widgets/native/searchlineedit.cpp`) and record in §5 whether rows 5–7 stay QtTest or become MANUAL.
-- [ ] **Step 3 (3036a): Row 7 watched failing** — `tests/test_config_control_help.cpp`, register
+- [x] **Step 3 (3036a): Row 7 watched failing** — `tests/test_config_control_help.cpp`, register
       `test_qt_config_control_help` in `meson.build`; add `attachHelp()` in `preferences_widgets.cpp`, call it from
       each `finish()`; row 8 screenshots. Commit `qt: preferences: add an info button to config controls`, MR.
-- [ ] **Step 4 (3036b): Rows 1–4** — `prefs_merge.{hpp,cpp}`: `panelSubcats()` table and `remainingItems(module,
+- [x] **Step 4 (3036b): Rows 1–4** — `prefs_merge.{hpp,cpp}`: `panelSubcats()` table and `remainingItems(module,
       subcat, shownNames)`, extracted from `AdvPrefsPanel` (`modules/gui/qt/dialogs/preferences/complete_preferences.cpp:597-641`) so the All view
       calls the same walker; `tests/test_prefs_merge.cpp` first, red then green, one row at a time.
-- [ ] **Step 5 (3036b): Rows 5–6** — in `SPrefsPanel` ctor, after the panel form, build a collapsed
+- [x] **Step 5 (3036b): Rows 5–6** — in `SPrefsPanel` ctor, after the panel form, build a collapsed
       `QGroupBox(qtr("Advanced options"))` from `remainingItems`, append its controls to `controls`; make
       `PrefsDialog::save` apply every built view (`modules/gui/qt/dialogs/preferences/preferences.cpp:333-352`). Commits
       `qt: preferences: list a panel's remaining options under Advanced options` and
       `qt: preferences: apply advanced options from simple panels on save`, MR.
-- [ ] **Step 6 (3036c)** — per ruling R3 (§5.1): replace the radio group by the "Show all settings" button;
+- [x] **Step 6 (3036c)** — per ruling R3 (§5.1): replace the radio group by the "Show all settings" button;
       MANUAL screenshots; commit `qt: preferences: fold the view selector`.
-- [ ] **Step 7: Whole gate** — §6 command per MR; summaries in §6 Evidence.
-- [ ] **Step 8: MRs** — PR to the fork github.com/oscarolar/vlc (base `master`), 3036a first; `status: review`.
+- [x] **Step 7: Whole gate** — §6 command per MR; summaries in §6 Evidence.
+- [x] **Step 8: MRs** — PR to the fork github.com/oscarolar/vlc (base `master`), 3036a first; `status: review`.
