@@ -61,3 +61,10 @@ Read before implementing any packet.
 - Snapshots exclude OSD channels but include private SPU channels; verify OSD output with screen captures.
 - The text renderer drops leading empty lines, so "\n"-prefixed text cannot stack under another subpicture.
 - Measured: PKT-3015 0.6 h (est. 12 h).
+
+## Added after PKT-3008
+- Correction to "QML test runner only loads VLC.Util": `qml_test` can load a QML file outside VLC.Util with `Qt.createComponent("../player/qml/X.qml")` if that file imports only VLC.Util. Inject other dependencies (e.g. MainCtx) as properties to make it testable; an unresolved singleton shows as a runtime `ReferenceError`, which gives a clean red test.
+- A QML `enum` in the VLC.Util singleton `Helpers` works as `Helpers.Edge.Top` in tests and production.
+- Waiting on a build over ssh: never `pgrep -f` a pattern that also appears in the waiting command (it matches itself and never ends). Watch `docker ps` or the log tail.
+- Do not edit the worktree while its baseline builds: qmlcachegen compiles the edited QML into it.
+- Measured: PKT-3008 0.7 h (est. 15 h).
