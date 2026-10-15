@@ -117,16 +117,78 @@ FocusScope {
             name: "music",
             url: "qrc:///qt/qml/VLC/MediaLibrary/MusicDisplay.qml"
         }, {
-            name: "network",
-            url: "qrc:///qt/qml/VLC/Network/BrowseDisplay.qml"
+            name: "streams",
+            component: streamsSection
         }, {
-            name: "discover",
-            url: "qrc:///qt/qml/VLC/Network/DiscoverDisplay.qml"
-        }, {
-            name: "mlsettings",
-            url: "qrc:///qt/qml/VLC/MediaLibrary/MLFoldersSettings.qml"
+            name: "playlists",
+            component: playlistsSection
         }
     ]
+
+    // A section of the sidebar whose pages are displays of their own.
+    component SectionLoader: Widgets.PageLoader {
+        id: section
+
+        property int displayMarginBeginning: 0
+        property int displayMarginEnd: 0
+
+        property bool enableBeginningFade: true
+        property bool enableEndFade: true
+
+        Accessible.role: Accessible.Client
+
+        onCurrentItemChanged: {
+            if (section.currentItem) {
+                if (section.currentItem.displayMarginBeginning !== undefined)
+                    section.currentItem.displayMarginBeginning = Qt.binding(() => { return section.displayMarginBeginning })
+
+                if (section.currentItem.displayMarginEnd !== undefined)
+                    section.currentItem.displayMarginEnd = Qt.binding(() => { return section.displayMarginEnd })
+
+                if (section.currentItem.enableBeginningFade !== undefined)
+                    section.currentItem.enableBeginningFade = Qt.binding(() => { return section.enableBeginningFade })
+
+                if (section.currentItem.enableEndFade !== undefined)
+                    section.currentItem.enableEndFade = Qt.binding(() => { return section.enableEndFade })
+            }
+        }
+    }
+
+    Component {
+        id: streamsSection
+
+        SectionLoader {
+            Accessible.name: qsTr("Network streams view")
+
+            pageModel: [{
+                    name: "network",
+                    default: true,
+                    url: "qrc:///qt/qml/VLC/Network/BrowseDisplay.qml"
+                }, {
+                    name: "discover",
+                    url: "qrc:///qt/qml/VLC/Network/DiscoverDisplay.qml"
+                }
+            ]
+        }
+    }
+
+    Component {
+        id: playlistsSection
+
+        SectionLoader {
+            Accessible.name: qsTr("Playlists view")
+
+            pageModel: [{
+                    name: "video",
+                    default: true,
+                    url: "qrc:///qt/qml/VLC/MediaLibrary/VideoPlaylistsDisplay.qml"
+                }, {
+                    name: "music",
+                    url: "qrc:///qt/qml/VLC/MediaLibrary/MusicPlaylistsDisplay.qml"
+                }
+            ]
+        }
+    }
 
     PinchHandler {
         id: interfaceScalePinchHandler

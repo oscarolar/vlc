@@ -469,6 +469,8 @@ qt_plugin_sources = files(
     'util/locallistcacheloader.hpp',
     'util/navigation_history.cpp',
     'util/navigation_history.hpp',
+    'util/navigation_history_node.cpp',
+    'util/navigation_history_node.hpp',
     'util/item_key_event_filter.cpp',
     'util/item_key_event_filter.hpp',
     'util/flickable_scroll_handler.cpp',
@@ -953,6 +955,7 @@ qml_modules += {
 
 qml_tests = {
     'tst_FSM': files('tests/tst_FSM.qml'),
+    'tst_NetworkAddressbar': files('tests/tst_NetworkAddressbar.qml'),
 }
 
 qmllibs = []
@@ -1359,6 +1362,25 @@ if qt6_dep.found()
             'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep]
         }
 
+
+        vlc_tests += {
+            'name': 'test_qt_navigation_history',
+            'sources': files(
+                'tests/test_navigation_history.cpp',
+                'util/navigation_history.hpp',
+                'util/navigation_history.cpp'
+            ),
+            'moc_sources': files(
+                'tests/test_navigation_history.cpp'
+            ),
+            'moc_headers': files(
+                'util/navigation_history.hpp'
+            ),
+            'suite': ['qt'],
+            'include_directories' : qt_include_dir,
+            'link_args': qt_link_args,
+            'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep]
+        }
 
         vlc_tests += {
             'name': 'test_qt_renderer_manager',

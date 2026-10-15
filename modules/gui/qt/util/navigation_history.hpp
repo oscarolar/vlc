@@ -12,6 +12,10 @@ class NavigationHistory : public QObject
 public:
     Q_PROPERTY(bool previousEmpty READ isPreviousEmpty NOTIFY previousEmptyChanged FINAL)
     /**
+     * true when there is no page to go forward to
+     */
+    Q_PROPERTY(bool nextEmpty READ isNextEmpty NOTIFY nextEmptyChanged FINAL)
+    /**
      * current path
      */
     Q_PROPERTY(QStringList viewPath READ viewPath NOTIFY viewPathChanged FINAL)
@@ -29,10 +33,14 @@ public:
     Q_ENUM(PostAction)
 
 public:
-    explicit NavigationHistory(QObject *parent = nullptr);
+    /// tells whether the properties of a history node are still usable
+    using NodeValidator = bool (*)(const QQmlPropertyMap&);
+
+    explicit NavigationHistory(NodeValidator isNodeValid, QObject *parent = nullptr);
 
     QVariant getCurrent();
     bool isPreviousEmpty();
+    bool isNextEmpty();
     QStringList viewPath() const;
     QQmlPropertyMap* viewProp() const;
 
@@ -42,6 +50,7 @@ public:
 signals:
     void navigate(Qt::FocusReason);
     void previousEmptyChanged(bool empty);
+    void nextEmptyChanged(bool empty);
     void viewPathChanged(const QStringList& viewPath);
     void viewPropChanged(QQmlPropertyMap*);
 
@@ -76,13 +85,22 @@ public slots:
     Q_INVOKABLE void update(QStringList path, const QVariantMap& properties);
 
 
-    /// Go to previous page
+    /// Go to previous page, the page we leave can be reached again with next()
     void previous(Qt::FocusReason = Qt::OtherFocusReason);
+
+    /// Go back to the page left by previous(), pushing a new page forgets it
+    void next(Qt::FocusReason = Qt::OtherFocusReason);
 
 private:
     void updateCurrent();
+    void clearForward();
 
+    /// pages kept for next(), the oldest ones are dropped first
+    static constexpr size_t MAX_FORWARD_SIZE = 50;
+
+    NodeValidator m_isNodeValid = nullptr;
     std::vector<std::pair<QStringList, std::unique_ptr<QQmlPropertyMap>>> m_history;
+    std::vector<std::pair<QStringList, std::unique_ptr<QQmlPropertyMap>>> m_forward;
     QStringList m_viewPath;
     QQmlPropertyMap* m_viewProperties = nullptr;
 };

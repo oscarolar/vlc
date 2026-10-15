@@ -326,6 +326,7 @@ libqt_plugin_la_SOURCES = \
 	util/locallistcacheloader.hpp \
 	util/locallistbasemodel.hpp \
 	util/navigation_history.cpp util/navigation_history.hpp \
+	util/navigation_history_node.cpp util/navigation_history_node.hpp \
 	util/item_key_event_filter.cpp \
 	util/item_key_event_filter.hpp \
 	util/flickable_scroll_handler.cpp \
@@ -1879,6 +1880,25 @@ check_PROGRAMS += test_qt_navigation_model
 TESTS += test_qt_navigation_model
 
 
+test_qt_navigation_history_SOURCES = \
+	tests/test_navigation_history.cpp \
+	util/navigation_history.hpp \
+	util/navigation_history.cpp
+
+nodist_test_qt_navigation_history_SOURCES = \
+	tests/test_navigation_history.moc \
+	util/navigation_history.moc.cpp
+
+BUILT_SOURCES += tests/test_navigation_history.moc
+CLEANFILES += tests/test_navigation_history.moc
+test_qt_navigation_history_CPPFLAGS = $(QT_QTEST_COMMON_cppflags)
+test_qt_navigation_history_CXXFLAGS = $(QT_QTEST_COMMON_cxxflags)
+test_qt_navigation_history_LDADD = $(QT_QTEST_COMMON_ldadd)
+test_qt_navigation_history_LDFLAGS = $(QT_QTEST_COMMON_ldflags)
+check_PROGRAMS += test_qt_navigation_history
+TESTS += test_qt_navigation_history
+
+
 endif
 
 QML_LOG_COMPILER = $(builddir)/qml_test -input
@@ -1894,5 +1914,7 @@ qml_test_LDFLAGS = $(AM_LDFLAGS) $(QT_QUICK_TEST_LDFLAGS)
 check_PROGRAMS += qml_test
 EXTRA_DIST += tests/tst_FSM.qml
 TESTS += tests/tst_FSM.qml
+EXTRA_DIST += tests/tst_NetworkAddressbar.qml
+TESTS += tests/tst_NetworkAddressbar.qml
 endif
 endif

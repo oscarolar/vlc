@@ -218,4 +218,58 @@ QtObject {
     }
 
     /// </flickable-extents>
+
+    /// <address-line>
+
+    // Splits the crumbs of an address line between the visible ones and the overflow
+    // menu. Crumbs are kept visible from the last one while they fit in `availableWidth`,
+    // the last crumb always is. `crumbWidth(index)` gives the width that crumb `index`
+    // takes. The overflow list starts with the crumb nearest to the last one.
+    function splitAddressCrumbs(crumbs : var, availableWidth : real, crumbWidth : var) : var {
+        const visible = []
+        const overflow = []
+        let leftWidth = availableWidth
+        let i = crumbs.length
+        while (--i >= 0) {
+            const width = crumbWidth(i)
+            if (i < crumbs.length - 1 && width > leftWidth)
+                overflow.push(crumbs[i])
+            else
+                visible.unshift(crumbs[i])
+            leftWidth -= width
+        }
+        return { visible: visible, overflow: overflow }
+    }
+
+    // What activating an address line crumb does: null for the current location,
+    // { tree } to browse a network tree, { uri } to navigate to a page.
+    function addressCrumbAction(crumb : var, isCurrent : bool) : var {
+        if (isCurrent || !crumb)
+            return null
+        if (crumb.tree !== undefined)
+            return { tree: crumb.tree }
+        if (crumb.uri !== undefined)
+            return { uri: crumb.uri }
+        return null
+    }
+
+    // Builds the address line crumbs of the page at `path`: one crumb per page of the path,
+    // named from `names` (the segment itself when unknown), the last one named `title`
+    // when it is not empty. A last page named like its parent (a default sub page) replaces
+    // it. Each crumb is { display, uri }.
+    function pathCrumbs(path : var, names : var, title : string) : var {
+        const crumbs = []
+        for (let i = 0; i < path.length; ++i) {
+            const segment = path[i]
+            let display = names[segment] ?? segment
+            if (i === path.length - 1 && !!title)
+                display = title
+            crumbs.push({ display: display, uri: path.slice(0, i + 1) })
+        }
+        if (crumbs.length > 1 && crumbs[crumbs.length - 1].display === crumbs[crumbs.length - 2].display)
+            crumbs.splice(crumbs.length - 2, 1)
+        return crumbs
+    }
+
+    /// </address-line>
 }

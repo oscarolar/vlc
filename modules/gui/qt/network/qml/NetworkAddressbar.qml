@@ -30,6 +30,8 @@ import VLC.Util
 T.Control {
     id: control
 
+    // crumbs from the root to the current location, each one is either
+    // { display, tree } to browse a network tree, or { display, uri } for a page
     property var path: []
 
     property var _contentModel
@@ -39,6 +41,7 @@ T.Control {
     readonly property int minimumWidth: VLCStyle.bannerTabButton_width_large
 
     signal browse(var tree, int reason)
+    signal navigate(var uri, int reason)
     signal homeButtonClicked(int reason)
 
     onPathChanged: createContentModel()
@@ -49,25 +52,25 @@ T.Control {
     onActiveFocusChanged: if (activeFocus) contentItem.forceActiveFocus(focusReason)
 
     function createContentModel() {
-        const contentModel = []
-        const menuModel = []
         if (path.length < 1)
             return
-        let leftWidth = control.availableWidth
-        let i = path.length
-        while (--i >= 0) {
-            const textWidth = fontMetrics.advanceWidth(path[i].display)
+        const split = Helpers.splitAddressCrumbs(path, control.availableWidth, (i) => {
+            return fontMetrics.advanceWidth(path[i].display)
                     + (i !== path.length - 1 ? iconMetrics.advanceWidth(
                                                     VLCIcons.breadcrumb_sep) : 0) + VLCStyle.margin_xsmall * 4
+        })
+        control._contentModel = split.visible
+        control._menuModel = split.overflow
+    }
 
-            if (i < path.length - 1 && textWidth > leftWidth)
-                menuModel.push(path[i])
-            else
-                contentModel.unshift(path[i])
-            leftWidth -= textWidth
-        }
-        control._contentModel = contentModel
-        control._menuModel = menuModel
+    function _activate(crumb, isCurrent, reason) {
+        const action = Helpers.addressCrumbAction(crumb, isCurrent)
+        if (!action)
+            return
+        if (action.tree !== undefined)
+            control.browse(action.tree, reason)
+        else
+            control.navigate(action.uri, reason)
     }
 
     readonly property ColorContext colorContext: ColorContext {
@@ -181,10 +184,7 @@ T.Control {
                     text: modelData.display
                     highlighted: index === contentRepeater.count - 1
 
-                    onClicked: {
-                        if (index !== contentRepeater.count - 1)
-                            browse(modelData.tree, focusReason)
-                    }
+                    onClicked: control._activate(modelData, index === contentRepeater.count - 1, focusReason)
                 }
 
                 Widgets.IconLabel {
@@ -232,7 +232,7 @@ T.Control {
         }
 
         onSelected: {
-            browse(control._menuModel[index].tree, focusReason)
+            control._activate(control._menuModel[index], false, focusReason)
         }
     }
 }

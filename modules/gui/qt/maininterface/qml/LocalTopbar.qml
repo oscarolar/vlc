@@ -143,6 +143,37 @@ T.ToolBar {
 
                     Navigation.parentItem: navigationButtons
                     Navigation.leftItem: navigationVisibilty
+                    Navigation.rightItem: historyForward
+                }
+
+                Widgets.IconToolButton {
+                    id: historyForward
+
+                    font.pixelSize: VLCStyle.icon_banner
+                    // NOTE: The icon font has no forward arrow, mirror the back one:
+                    text: VLCIcons.back
+                    description: qsTr("Next")
+
+                    AccessibleCompat.id: "historyForwardButton"
+
+                    height: VLCStyle.bannerButton_height
+                    width: VLCStyle.bannerButton_width
+
+                    transform: Scale {
+                        origin.x: historyForward.width / 2
+                        xScale: -1
+                    }
+
+                    onClicked: History.next()
+                    enabled: !History.nextEmpty
+
+                    onEnabledChanged: {
+                        if (historyForward.activeFocus)
+                            navigationVisibilty.focus = true
+                    }
+
+                    Navigation.parentItem: navigationButtons
+                    Navigation.leftItem: historyBack
                     Navigation.rightItem: playlistBtn
                 }
 
@@ -190,7 +221,7 @@ T.ToolBar {
 
                     Navigation.parentItem: playqueueButtonsTop
                     Navigation.rightItem: menuBtn
-                    Navigation.leftItem: historyBack
+                    Navigation.leftItem: historyForward
 
                     onClicked:  root.togglePlayqueueVisibility()
                 }

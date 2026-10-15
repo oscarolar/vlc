@@ -39,7 +39,7 @@ EmptyLabel {
     // Functions
 
     function onNavigate(reason) {
-        History.push(["network"], reason)
+        History.push(["streams", "network"], reason)
     }
 
     // Keys

@@ -22,6 +22,7 @@ import QtQuick.Templates as T
 import VLC.MainInterface
 import VLC.Style
 import VLC.Menus
+import VLC.Network
 import VLC.Util
 
 T.Page {
@@ -29,6 +30,29 @@ T.Page {
 
     //path of the current page loader
     property var pagePrefix: []
+
+    //the header shows the path of sub pages as an address line in place of the title
+    property bool showAddressLine: pagePrefix.length > 1
+
+    //crumbs of the address line, from the section down to this page
+    property var addressCrumbs: Helpers.pathCrumbs(pagePrefix, _pathNames, title)
+
+    readonly property var _pathNames: ({
+        "home": qsTr("Home"),
+        "video": qsTr("Video"),
+        "music": qsTr("Music"),
+        "streams": qsTr("Network streams"),
+        "playlists": qsTr("Playlists"),
+        "network": qsTr("Browse"),
+        "discover": qsTr("Discover"),
+        "all": qsTr("All"),
+        "artists": qsTr("Artists"),
+        "albums": qsTr("Albums"),
+        "tracks": qsTr("Tracks"),
+        "genres": qsTr("Genres"),
+        "services": qsTr("Services"),
+        "url": qsTr("URL")
+    })
 
     //note that T.Page introduce an intermediate Item, so to access our delegate,
     //we need to use contentChildren[0] rather than contentItem
@@ -112,6 +136,9 @@ T.Page {
     header: DefaultPageHeader {
         text: root.title
 
+        showAddressLine: root.showAddressLine
+        addressCrumbs: root.addressCrumbs
+
         leftPadding: VLCStyle.dynamicAppMargins(width) + VLCStyle.layout_left_margin + root.leftPadding
         rightPadding: VLCStyle.dynamicAppMargins(width) + VLCStyle.layout_right_margin + root.rightPadding
 
@@ -142,6 +169,9 @@ T.Page {
         property alias search: gridSortFilter.search
         property alias sort: gridSortFilter.sort
 
+        property bool showAddressLine: false
+        property alias addressCrumbs: addressLine.path
+
         position: T.ToolBar.Header
 
         topPadding: VLCStyle.layoutTitle_top_padding
@@ -159,7 +189,7 @@ T.Page {
         implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset,
                                  implicitContentHeight + topPadding + bottomPadding)
 
-        Navigation.navigable: gridSortFilter.enabled
+        Navigation.navigable: gridSortFilter.enabled || showAddressLine
 
         // Children
 
@@ -182,7 +212,35 @@ T.Page {
 
                 Layout.fillWidth: true
 
+                visible: !defaultPageHeader.showAddressLine
+
                 color: theme.fg.primary
+            }
+
+            NetworkAddressbar {
+                id: addressLine
+
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                visible: defaultPageHeader.showAddressLine
+
+                // keep the default focus on the sort and search controls
+                focus: false
+
+                background: null
+
+                Accessible.role: Accessible.ToolBar
+                Accessible.name: qsTr("Address")
+                AccessibleCompat.id: "pageAddressLine"
+
+                Navigation.parentItem: defaultPageHeader
+                Navigation.rightItem: gridSortFilter
+
+                // local folders are found where the network streams start
+                onHomeButtonClicked: (reason) => History.push(["streams", "network"], reason)
+
+                onNavigate: (uri, reason) => History.push(uri, reason)
             }
 
             GridSortFilterControls {
@@ -191,6 +249,7 @@ T.Page {
                 sort: _sortCtx
                 search: _searchCtx
                 Navigation.parentItem: defaultPageHeader
+                Navigation.leftItem: addressLine.visible ? addressLine : null
             }
         }
     }
