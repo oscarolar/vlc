@@ -74,6 +74,7 @@ check_PROGRAMS = \
 	test_src_video_output_spu \
 	test_modules_lua_extension \
 	test_modules_misc_medialibrary \
+	test_modules_control_hotkeys_osd \
 	test_modules_packetizer_helpers \
 	test_modules_packetizer_hxxx \
 	test_modules_packetizer_h264 \
@@ -356,6 +357,9 @@ test_modules_lua_playlist_parser_CPPFLAGS = $(AM_CPPFLAGS)
 
 test_modules_misc_medialibrary_SOURCES = modules/misc/medialibrary.c
 test_modules_misc_medialibrary_LDADD = $(LIBVLCCORE) $(LIBVLC)
+test_modules_control_hotkeys_osd_SOURCES = modules/control/hotkeys_osd.c \
+	../modules/control/hotkeys_osd.h
+test_modules_control_hotkeys_osd_LDADD = $(LIBVLCCORE) $(LIBVLC)
 test_modules_packetizer_helpers_SOURCES = modules/packetizer/helpers.c
 test_modules_packetizer_helpers_LDADD = $(LIBVLCCORE) $(LIBVLC)
 test_modules_packetizer_hxxx_SOURCES = modules/packetizer/hxxx.c

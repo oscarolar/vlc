@@ -39,9 +39,12 @@
 #include <vlc_playlist.h>
 #include <vlc_actions.h>
 #include <vlc_spu.h>
+#include <vlc_subpicture.h>
 #include <vlc_executor.h>
+#include <vlc_list.h>
 #include <vlc_vout_osd.h>
 #include "math.h"
+#include "hotkeys_osd.h"
 
 struct intf_sys_t
 {
@@ -62,6 +65,25 @@ struct intf_sys_t
     enum vlc_vout_order spu_channel_order;
 
     vlc_executor_t *executor;
+
+    /* Name of the key that triggered an action ("hotkeys-osd-key") */
+    struct
+    {
+        bool enabled;
+        vlc_mutex_t lock;
+        struct hotkeys_key_tracker tracker;
+        uint32_t *mapped_keys;
+        size_t mapped_count;
+        /* Private SPU channel of each tracked vout */
+        struct vlc_list channels;
+    } keyosd;
+};
+
+struct keyosd_channel
+{
+    vout_thread_t *vout;
+    size_t channel;
+    struct vlc_list node;
 };
 
 static void handle_action(intf_thread_t *, vlc_action_id_t);
@@ -1166,6 +1188,22 @@ player_on_vout_started(vlc_player_t *player, vout_thread_t *vout, void *data)
     var_AddCallback(vout, "mouse-button-down", MouseButtonCallback, intf);
     var_AddCallback(vout, "mouse-moved", MouseMovedCallback, sys);
 
+    if (sys->keyosd.enabled)
+    {
+        struct keyosd_channel *entry = malloc(sizeof (*entry));
+        ssize_t channel = entry ? vout_RegisterSubpictureChannel(vout) : -1;
+        if (channel >= 0)
+        {
+            entry->vout = vout;
+            entry->channel = channel;
+            vlc_mutex_lock(&sys->keyosd.lock);
+            vlc_list_append(&entry->node, &sys->keyosd.channels);
+            vlc_mutex_unlock(&sys->keyosd.lock);
+        }
+        else
+            free(entry);
+    }
+
     if (var_GetBool(vout, "viewpoint-changeable"))
         var_AddCallback(vout, "viewpoint-moved",
                         ViewpointMovedCallback, player);
@@ -1182,6 +1220,22 @@ player_on_vout_stopped(vlc_player_t *player, vout_thread_t *vout, void *data)
         return;
 
     vlc_array_remove(&sys->vouts, idx);
+
+    struct keyosd_channel *entry, *removed = NULL;
+    vlc_mutex_lock(&sys->keyosd.lock);
+    vlc_list_foreach(entry, &sys->keyosd.channels, node)
+        if (entry->vout == vout)
+        {
+            vlc_list_remove(&entry->node);
+            removed = entry;
+            break;
+        }
+    vlc_mutex_unlock(&sys->keyosd.lock);
+    if (removed != NULL)
+    {
+        vout_UnregisterSubpictureChannel(vout, removed->channel);
+        free(removed);
+    }
 
     if (var_GetBool(vout, "viewpoint-changeable"))
         var_DelCallback(vout, "viewpoint-moved",
@@ -1215,12 +1269,145 @@ player_on_vout_changed(vlc_player_t *player,
     }
 }
 
+/***************************
+ * name of the pressed key *
+ **************************/
+
+static int
+KeyPressedCallback(vlc_object_t *obj, char const *var,
+                   vlc_value_t ov, vlc_value_t newval, void *data)
+{
+    VLC_UNUSED(obj); VLC_UNUSED(var); VLC_UNUSED(ov);
+    intf_sys_t *sys = data;
+    uint32_t key = newval.i_int;
+
+    /* Callbacks are prepended: this runs before the core key map, which
+     * then sets "key-action" synchronously on this same thread. */
+    vlc_mutex_lock(&sys->keyosd.lock);
+    hotkeys_key_tracker_KeyPressed(&sys->keyosd.tracker, key,
+                                   hotkeys_osd_IsKeyMapped(sys->keyosd.mapped_keys,
+                                                           sys->keyosd.mapped_count,
+                                                           key),
+                                   vlc_thread_id());
+    vlc_mutex_unlock(&sys->keyosd.lock);
+    return VLC_SUCCESS;
+}
+
+static void
+KeyOSDLoadMappedKeys(intf_thread_t *intf)
+{
+    intf_sys_t *sys = intf->p_sys;
+    const char *const *names = vlc_actions_get_key_names(intf);
+    uint32_t *keys = NULL;
+    size_t count = 0;
+
+    for (size_t i = 0; names != NULL && names[i] != NULL; i++)
+    {
+        uint_fast32_t *codes;
+        size_t n = vlc_actions_get_keycodes(intf, names[i], false, &codes);
+        if (n == 0)
+            continue;
+        uint32_t *grown = realloc(keys, (count + n) * sizeof (*keys));
+        if (unlikely(grown == NULL))
+        {
+            free(codes);
+            continue;
+        }
+        keys = grown;
+        for (size_t j = 0; j < n; j++)
+            keys[count++] = codes[j];
+        free(codes);
+    }
+
+    /* The mouse wheel is bound by the core according to these modes */
+    static const struct
+    {
+        const char *mode;
+        uint32_t first, last;
+    } wheels[] = {
+        { "hotkeys-y-wheel-mode", KEY_MOUSEWHEELUP, KEY_MOUSEWHEELDOWN },
+        { "hotkeys-x-wheel-mode", KEY_MOUSEWHEELLEFT, KEY_MOUSEWHEELRIGHT },
+    };
+    for (size_t i = 0; i < ARRAY_SIZE(wheels); i++)
+    {
+        int64_t mode = var_InheritInteger(intf, wheels[i].mode);
+        if (mode != 0 && mode != 2 && mode != 3) /* ignored */
+            continue;
+        uint32_t *grown = realloc(keys, (count + 2) * sizeof (*keys));
+        if (unlikely(grown == NULL))
+            continue;
+        keys = grown;
+        keys[count++] = wheels[i].first;
+        keys[count++] = wheels[i].last;
+    }
+
+    hotkeys_osd_SortKeys(keys, count);
+    sys->keyosd.mapped_keys = keys;
+    sys->keyosd.mapped_count = count;
+}
+
+static void
+KeyOSDShow(intf_thread_t *intf, uint32_t key)
+{
+    intf_sys_t *sys = intf->p_sys;
+    char *label = hotkeys_osd_KeyLabel(key);
+    if (label == NULL)
+        return;
+
+    /* Bottom-right: the text renderer drops a leading empty line, so the
+     * label cannot be stacked under the top-right action message. */
+    struct keyosd_channel *entry;
+    vlc_mutex_lock(&sys->keyosd.lock);
+    vlc_list_foreach(entry, &sys->keyosd.channels, node)
+    {
+        vout_FlushSubpictureChannel(entry->vout, entry->channel);
+        vout_OSDText(entry->vout, entry->channel,
+                     SUBPICTURE_ALIGN_BOTTOM|SUBPICTURE_ALIGN_RIGHT,
+                     VLC_TICK_FROM_SEC(1), label);
+    }
+    vlc_mutex_unlock(&sys->keyosd.lock);
+    free(label);
+}
+
+static void
+KeyOSDFlush(intf_thread_t *intf)
+{
+    intf_sys_t *sys = intf->p_sys;
+    struct keyosd_channel *entry;
+    vlc_mutex_lock(&sys->keyosd.lock);
+    vlc_list_foreach(entry, &sys->keyosd.channels, node)
+        vout_FlushSubpictureChannel(entry->vout, entry->channel);
+    vlc_mutex_unlock(&sys->keyosd.lock);
+}
+
 static int
 ActionCallback(vlc_object_t *obj, char const *var,
                vlc_value_t ov, vlc_value_t newval, void *data)
 {
     VLC_UNUSED(obj); VLC_UNUSED(var); VLC_UNUSED(ov);
-    handle_action(data, newval.i_int);
+    intf_thread_t *intf = data;
+    intf_sys_t *sys = intf->p_sys;
+    uint32_t key = KEY_UNSET;
+
+    if (sys->keyosd.enabled)
+    {
+        vlc_mutex_lock(&sys->keyosd.lock);
+        key = hotkeys_key_tracker_TakeForAction(&sys->keyosd.tracker,
+                                                vlc_thread_id());
+        vlc_mutex_unlock(&sys->keyosd.lock);
+
+        /* Unlike the OSD channels, the label channel ends up in snapshots */
+        if (newval.i_int == ACTIONID_SNAPSHOT)
+        {
+            KeyOSDFlush(intf);
+            key = KEY_UNSET;
+        }
+    }
+
+    handle_action(intf, newval.i_int);
+
+    if (key != KEY_UNSET)
+        KeyOSDShow(intf, key);
     return VLC_SUCCESS;
 }
 
@@ -1240,6 +1427,15 @@ Open(vlc_object_t *this)
     vlc_array_init(&sys->vouts);
     sys->subsync.audio_time = sys->subsync.subtitle_time = VLC_TICK_INVALID;
     sys->spu_channel_order = VLC_VOUT_ORDER_PRIMARY;
+    sys->keyosd.enabled = var_InheritBool(intf, "hotkeys-osd-key");
+    vlc_mutex_init(&sys->keyosd.lock);
+    hotkeys_key_tracker_Init(&sys->keyosd.tracker);
+    sys->keyosd.mapped_keys = NULL;
+    sys->keyosd.mapped_count = 0;
+    vlc_list_init(&sys->keyosd.channels);
+    intf->p_sys = sys;
+    if (sys->keyosd.enabled)
+        KeyOSDLoadMappedKeys(intf);
     static struct vlc_player_cbs const player_cbs =
     {
         .on_vout_changed = player_on_vout_changed,
@@ -1250,14 +1446,17 @@ Open(vlc_object_t *this)
     vlc_player_Unlock(player);
     if (!sys->player_listener)
     {
+        free(sys->keyosd.mapped_keys);
         free(sys);
         return VLC_EGENERIC;
     }
     var_AddCallback(vlc_object_instance(intf), "key-action", ActionCallback, intf);
+    if (sys->keyosd.enabled)
+        var_AddCallback(vlc_object_instance(intf), "key-pressed",
+                        KeyPressedCallback, sys);
 
     sys->executor = NULL;
 
-    intf->p_sys = sys;
     return VLC_SUCCESS;
 }
 
@@ -1275,6 +1474,9 @@ Close(vlc_object_t *this)
                                intf);
     vlc_player_Unlock(player);
 
+    if (sys->keyosd.enabled)
+        var_DelCallback(vlc_object_instance(intf), "key-pressed",
+                        KeyPressedCallback, sys);
     var_DelCallback(vlc_object_instance(intf), "key-action", ActionCallback, intf);
 
     if (sys->executor)
@@ -1283,6 +1485,8 @@ Close(vlc_object_t *this)
         vlc_executor_Delete(sys->executor);
     }
 
+    assert(vlc_list_is_empty(&sys->keyosd.channels));
+    free(sys->keyosd.mapped_keys);
     free(sys);
 }
 
@@ -1291,12 +1495,18 @@ static void AutoRun(libvlc_int_t *libvlc)
     intf_Create(libvlc, MODULE_STRING);
 }
 
+#define OSD_KEY_TEXT N_("Show the pressed key")
+#define OSD_KEY_LONGTEXT N_( \
+    "When an action is triggered by a key or a mouse wheel binding, name " \
+    "that key in the bottom-right corner of the video for one second.")
+
 vlc_module_begin ()
     set_shortname(N_("Hotkeys"))
     set_description(N_("Hotkeys management interface"))
     set_capability("interface", 0)
     set_callbacks(Open, Close)
     set_subcategory(SUBCAT_INTERFACE_HOTKEYS)
+    add_bool("hotkeys-osd-key", true, OSD_KEY_TEXT, OSD_KEY_LONGTEXT)
 
     add_submodule()
     set_capability("autorun", 20)
