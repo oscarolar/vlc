@@ -47,3 +47,10 @@ Read before implementing any packet.
 - `check_packets.py` rejects backticked paths of new files not listed in `target_files`; write them as plain text.
 - Never edit sources while a build is running in the same worktree.
 - Measured: PKT-3027 0.4 h.
+
+## Added after PKT-3036
+- Preferences widgets are testable standalone: reuse `qt_prefs_test_sources` / `qt_prefs_test_moc_headers` in `modules/gui/qt/meson.build`. `SPrefsPanel` and `PrefsDialog` are not (they pull the whole interface).
+- Pass the `-c user.name/-c user.email` identity to `cherry-pick` and `rebase` too.
+- Do not edit `meson.build` while `meson test` runs in that build dir (it reconfigures mid-run).
+- Stacked PRs on the fork target `master`, so the upper PR also shows the lower one's commits until the lower merges.
+- Measured: PKT-3036 0.5 h.
