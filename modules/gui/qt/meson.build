@@ -1421,6 +1421,37 @@ if qt6_dep.found()
             'link_args': qt_link_args,
             'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
         }
+
+        # preferences widgets, without the rest of the interface
+        qt_prefs_test_sources = files(
+            'dialogs/preferences/preferences_widgets.cpp',
+            'widgets/native/searchlineedit.cpp',
+            'widgets/native/customwidgets.cpp',
+            'widgets/native/animators.cpp',
+            'util/vlchotkeyconverter.cpp',
+            'util/qt_dirs.cpp',
+        )
+        qt_prefs_test_moc_headers = files(
+            'dialogs/preferences/preferences_widgets.hpp',
+            'widgets/native/searchlineedit.hpp',
+            'widgets/native/customwidgets.hpp',
+            'widgets/native/animators.hpp',
+            'util/vlchotkeyconverter.hpp',
+        )
+
+        vlc_tests += {
+            'name': 'test_qt_config_control_help',
+            'sources': [files('tests/test_config_control_help.cpp'), qt_prefs_test_sources],
+            'moc_sources': files(
+                'tests/test_config_control_help.cpp'
+            ),
+            'moc_headers': qt_prefs_test_moc_headers,
+            'suite': ['qt'],
+            'include_directories' : qt_include_dir,
+            'link_with': [libvlccore],
+            'link_args': qt_link_args,
+            'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+        }
     endif
 
     quicktest_qt6_dep = dependency('qt6', version: '=' + qt6_dep.version(), modules: ['QuickTest'], required: false)
