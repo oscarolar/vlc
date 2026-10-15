@@ -288,6 +288,7 @@ void SPrefsPanel::configGeneric(const char* option, QLabel* label, WidgetType* c
     if( p_config )
     {
         auto configcontrol =  new ControlType(p_config, label, control );
+        configcontrol->markClean();
         controls.append( configcontrol );
     }
     else
@@ -305,6 +306,7 @@ void SPrefsPanel::configGenericNoUi(const char* option, QLabel* label, WidgetTyp
     if( p_config )
     {
         auto configcontrol =  new ControlType(p_config, label, control );
+        configcontrol->markClean();
         controls.append( configcontrol );
     }
     else
@@ -322,6 +324,7 @@ void SPrefsPanel::configGenericFile(const char* option, QLabel* label, QLineEdit
     if( p_config )
     {
         auto configcontrol =  new ControlType(p_config, label, control, button );
+        configcontrol->markClean();
         controls.append( configcontrol );
     }
     else
@@ -340,6 +343,7 @@ void SPrefsPanel::configBool(const char* option, QAbstractButton* control)
     if( p_config )
     {
         auto configcontrol =  new BoolConfigControl(p_config, nullptr, control );
+        configcontrol->markClean();
         controls.append( configcontrol );
     }
     else
@@ -990,6 +994,7 @@ SPrefsPanel::SPrefsPanel( qt_intf_t *_p_intf, QWidget *_parent,
 
             panel_label->setText( qtr( "Configure Hotkeys" ) );
             control = new KeySelectorControl( this );
+            control->markClean();
             control->insertInto( gLayout, line );
             controls.append( control );
 
@@ -997,6 +1002,7 @@ SPrefsPanel::SPrefsPanel( qt_intf_t *_p_intf, QWidget *_parent,
 
             p_config = config_FindConfig( "hotkeys-y-wheel-mode" );
             control = new IntegerListConfigControl( p_config, this );
+            control->markClean();
             control->insertInto( gLayout, line );
             controls.append( control );
 
@@ -1004,6 +1010,7 @@ SPrefsPanel::SPrefsPanel( qt_intf_t *_p_intf, QWidget *_parent,
 
             p_config = config_FindConfig( "hotkeys-x-wheel-mode" );
             control = new IntegerListConfigControl( p_config, this );
+            control->markClean();
             control->insertInto( gLayout, line );
             controls.append( control );
 
@@ -1012,6 +1019,7 @@ SPrefsPanel::SPrefsPanel( qt_intf_t *_p_intf, QWidget *_parent,
 
             p_config = config_FindConfig( "qt-disable-volume-keys" );
             control = new BoolConfigControl( p_config, this );
+            control->markClean();
             control->insertInto( gLayout, line );
             controls.append( control );
 #endif
@@ -1058,8 +1066,25 @@ SPrefsPanel::SPrefsPanel( qt_intf_t *_p_intf, QWidget *_parent,
     panel_layout->addWidget( panel_label );
     panel_layout->addWidget( title_line );
 
+    /* The options of the same category that the form does not show */
+    QWidget *page = panel;
+    advanced = new AdvancedOptionsSection( number, PrefsMerge::shownNames( controls ) );
+    if( advanced->isEmpty() )
+    {
+        delete advanced;
+        advanced = nullptr;
+    }
+    else
+    {
+        page = new QWidget;
+        QVBoxLayout *page_layout = new QVBoxLayout( page );
+        page_layout->setContentsMargins( 0, 0, 0, 0 );
+        page_layout->addWidget( panel );
+        page_layout->addWidget( advanced );
+    }
+
     QScrollArea *scroller= new QScrollArea;
-    scroller->setWidget( panel );
+    scroller->setWidget( page );
     scroller->setWidgetResizable( true );
     scroller->setFrameStyle( QFrame::NoFrame );
     panel_layout->addWidget( scroller );
@@ -1191,12 +1216,9 @@ void SPrefsPanel::apply()
     m_isApplied = true;
 
     /* Generic save for ever panel */
-    QList<ConfigControl *>::const_iterator i;
-    for( i = controls.cbegin() ; i != controls.cend() ; ++i )
-    {
-        ConfigControl *c = qobject_cast<ConfigControl *>(*i);
-        c->doApply();
-    }
+    PrefsMerge::applyChanged( controls );
+    if( advanced )
+        advanced->apply();
 
     switch( number )
     {

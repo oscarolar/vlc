@@ -62,6 +62,7 @@ moc_headers = files(
     'dialogs/preferences/expert_view.hpp',
     'dialogs/preferences/preferences.hpp',
     'dialogs/preferences/preferences_widgets.hpp',
+    'dialogs/preferences/prefs_merge.hpp',
     'dialogs/preferences/simple_preferences.hpp',
     'dialogs/sout/convert.hpp',
     'dialogs/sout/profile_selector.hpp',
@@ -267,6 +268,8 @@ qt_plugin_sources = files(
     'dialogs/preferences/preferences.hpp',
     'dialogs/preferences/preferences_widgets.cpp',
     'dialogs/preferences/preferences_widgets.hpp',
+    'dialogs/preferences/prefs_merge.cpp',
+    'dialogs/preferences/prefs_merge.hpp',
     'dialogs/preferences/simple_preferences.cpp',
     'dialogs/preferences/simple_preferences.hpp',
     'dialogs/sout/convert.cpp',
@@ -1415,6 +1418,43 @@ if qt6_dep.found()
             'moc_headers': files(
                 'dialogs/dialogs/dialogmodel.hpp'
             ),
+            'suite': ['qt'],
+            'include_directories' : qt_include_dir,
+            'link_with': [libvlccore, libvlc],
+            'link_args': qt_link_args,
+            'dependencies': [qt6_dep, qt_extra_deps, qtest_qt6_dep],
+        }
+
+        # preferences widgets, without the rest of the interface
+        qt_prefs_test_sources = files(
+            'dialogs/preferences/preferences_widgets.cpp',
+            'widgets/native/searchlineedit.cpp',
+            'widgets/native/customwidgets.cpp',
+            'widgets/native/animators.cpp',
+            'util/vlchotkeyconverter.cpp',
+            'util/qt_dirs.cpp',
+        )
+        qt_prefs_test_moc_headers = files(
+            'dialogs/preferences/preferences_widgets.hpp',
+            'widgets/native/searchlineedit.hpp',
+            'widgets/native/customwidgets.hpp',
+            'widgets/native/animators.hpp',
+            'util/vlchotkeyconverter.hpp',
+        )
+
+        vlc_tests += {
+            'name': 'test_qt_prefs_merge',
+            'sources': [files(
+                'tests/test_prefs_merge.cpp',
+                'tests/vlc_stub_modules.cpp',
+                'dialogs/preferences/prefs_merge.cpp',
+            ), qt_prefs_test_sources],
+            'moc_sources': files(
+                'tests/test_prefs_merge.cpp'
+            ),
+            'moc_headers': [files(
+                'dialogs/preferences/prefs_merge.hpp',
+            ), qt_prefs_test_moc_headers],
             'suite': ['qt'],
             'include_directories' : qt_include_dir,
             'link_with': [libvlccore, libvlc],

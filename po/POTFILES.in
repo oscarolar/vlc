@@ -724,6 +724,8 @@ modules/gui/qt/dialogs/preferences/preferences.cpp
 modules/gui/qt/dialogs/preferences/preferences.hpp
 modules/gui/qt/dialogs/preferences/preferences_widgets.cpp
 modules/gui/qt/dialogs/preferences/preferences_widgets.hpp
+modules/gui/qt/dialogs/preferences/prefs_merge.cpp
+modules/gui/qt/dialogs/preferences/prefs_merge.hpp
 modules/gui/qt/dialogs/preferences/simple_preferences.cpp
 modules/gui/qt/dialogs/preferences/simple_preferences.hpp
 modules/gui/qt/dialogs/sout/convert.cpp

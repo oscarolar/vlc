@@ -35,6 +35,7 @@
 
 #include "dialogs/preferences/complete_preferences.hpp"
 #include "dialogs/preferences/preferences_widgets.hpp"
+#include "dialogs/preferences/prefs_merge.hpp"
 
 #include <vlc_modules.h>
 #include <cassert>
@@ -530,27 +531,20 @@ AdvPrefsPanel::AdvPrefsPanel( qt_intf_t *_p_intf, QWidget *_parent,
 
     unsigned confsize;
     p_config = module_config_get( p_module, &confsize );
-    module_config_t *p_item = p_config,
-                    *p_end = p_config + confsize;
 
     QString heading;
+    enum vlc_config_subcat subcat;
 
     if( node->node_type != PrefsTreeItem::PLUGIN_NODE  )
     {
         heading = QString( node->name );
-        /* Skip to the relevant part of the core config */
-        while (p_item < p_end)
-        {
-            if(  p_item->i_type == CONFIG_SUBCATEGORY &&
-                 p_item->value.i == node->subcat_id )
-                break;
-            p_item++;
-        }
-        p_item++; // Skip past the subcat entry itself
+        subcat = node->subcat_id;
     }
     else
     {
         heading = QString( qfut( module_GetLongName( p_module ) ) );
+        /* a plugin's options are all on its node */
+        subcat = SUBCAT_UNKNOWN;
     }
 
     /* Widgets now */
@@ -585,71 +579,16 @@ AdvPrefsPanel::AdvPrefsPanel( qt_intf_t *_p_intf, QWidget *_parent,
     global_layout->addWidget( title_line );
     global_layout->addWidget( helpLabel );
 
-    QGroupBox *box = NULL;
-    QGridLayout *boxlayout = NULL;
-
     QScrollArea *scroller= new QScrollArea;
     scroller->setFrameStyle( QFrame::NoFrame );
     QWidget *scrolled_area = new QWidget;
 
     QGridLayout *layout = new QGridLayout();
-    int i_line = 0, i_boxline = 0;
-    bool has_hotkey = false;
+    int i_line = 0;
 
-    if( p_item ) for ( ; p_item < p_end; ++p_item)
-    {
-        if( p_item->i_type == CONFIG_SUBCATEGORY )
-        {
-            if( node->node_type == PrefsTreeItem::PLUGIN_NODE )
-                continue;
-            else
-                break;
-        }
-
-        if( p_item->i_type == CONFIG_SECTION )
-        {
-            if( box && i_boxline > 0 )
-            {
-                box->setLayout( boxlayout );
-                box->show();
-                layout->addWidget( box, i_line, 0, 1, -1 );
-                i_line++;
-            }
-            i_boxline = 0;
-            box = new QGroupBox( qfut( p_item->psz_text ), this );
-            box->hide();
-            boxlayout = new QGridLayout();
-        }
-
-        /* Only one hotkey control */
-        if( p_item->i_type == CONFIG_ITEM_KEY )
-        {
-            if( has_hotkey )
-                continue;
-            has_hotkey = true;
-        }
-
-        ConfigControl *control;
-        if( ! box )
-            control = ConfigControl::createControl( p_item, this,
-                                                    layout, i_line );
-        else
-            control = ConfigControl::createControl( p_item, this,
-                                                    boxlayout, i_boxline );
-        if( !control )
-            continue;
-
-        if( box ) i_boxline++;
-        else i_line++;
-        controls.append( control );
-    }
-
-    if( box && i_boxline > 0 )
-    {
-        box->setLayout( boxlayout );
-        box->show();
-        layout->addWidget( box, i_line, 0, 1, -1 );
-    }
+    controls = PrefsMerge::createControls(
+            PrefsMerge::remainingItems( p_config, confsize, subcat, {} ),
+            this, layout, i_line );
 
     scrolled_area->setSizePolicy( QSizePolicy::Preferred, QSizePolicy::Fixed );
     scrolled_area->setLayout( layout );
@@ -661,8 +600,7 @@ AdvPrefsPanel::AdvPrefsPanel( qt_intf_t *_p_intf, QWidget *_parent,
 
 void AdvPrefsPanel::apply()
 {
-    foreach ( ConfigControl *cfg, controls )
-        cfg->doApply();
+    PrefsMerge::applyChanged( controls );
 }
 
 void AdvPrefsPanel::clean()
