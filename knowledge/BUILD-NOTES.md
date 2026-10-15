@@ -54,3 +54,10 @@ Read before implementing any packet.
 - Do not edit `meson.build` while `meson test` runs in that build dir (it reconfigures mid-run).
 - Stacked PRs on the fork target `master`, so the upper PR also shows the lower one's commits until the lower merges.
 - Measured: PKT-3036 0.5 h.
+
+## Added after PKT-3015
+- Run built VLC in the image: `./build-meson/bin/vlc-static` with `VLC_LIB_PATH` and `VLC_PLUGIN_PATH` set to `<build>/modules`, plus `--aout=dummy` (pipewire/pulse segfault).
+- Headless screenshots: `xvfb-run` hangs; start `Xvfb :99 -fbdir <dir> &` by hand and convert `<dir>/Xvfb_screen0` (XWD) to PNG. Drive keys with a luaintf script in `$HOME/.local/share/vlc/lua/intf/` (`vlc.var.set` on `key-pressed`/`key-action`, numeric action ids).
+- Snapshots exclude OSD channels but include private SPU channels; verify OSD output with screen captures.
+- The text renderer drops leading empty lines, so "\n"-prefixed text cannot stack under another subpicture.
+- Measured: PKT-3015 0.6 h (est. 12 h).
