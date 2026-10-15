@@ -30,3 +30,12 @@ Read before implementing any packet.
 - `check_packets.py` treats any backticked text with a slash as a repo path. Do not backtick image names or URLs in §6.
 - Frontmatter accepts `actual_h` and `actual_h_bugfix` (OPTIONAL_KEYS).
 - Measured so far: PKT-3037 full 0.3 h (est. 4 h); PKT-3019 bugfix 0.3 h; PKT-3032 bugfix 0.2 h.
+
+## Added after PKT-3001
+- Inside `docker run ... bash -c "..."` the container HOME is `/`, so `~` expands to `/`. Use host-expanded `$HOME` paths.
+- `check_packets.py` exits 1 on failures, but piping it (`| tail`) hides that from `&&`. Run it unpiped, read the result, then commit.
+- qmllint before/after: run it before editing; normalise positions when diffing: `sed -E "s/:[0-9]+:[0-9]+:/:L:C:/"`.
+- A `ColorContext` that sets any state property (`enabled`, `pressed`, ...) stops inheriting hover/press state from its parent context.
+- An unqualified `implicitHeight` inside a `Rectangle` is that Rectangle's own (often 0), not the parent's.
+- The Figma community file returns HTTP 403 without a browser session; use the packet's proposed values and record it.
+- Measured: PKT-3001 0.2 h (est. 12 h).
