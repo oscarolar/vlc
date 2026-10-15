@@ -26,6 +26,13 @@ vlc_tests += {
 endif
 
 vlc_tests += {
+    'name' : 'test_modules_control_hotkeys_osd',
+    'sources' : files('control/hotkeys_osd.c'),
+    'suite' : ['modules', 'test_modules'],
+    'link_with' : [libvlc, libvlccore],
+}
+
+vlc_tests += {
     'name' : 'test_modules_packetizer_helpers',
     'sources' : files('packetizer/helpers.c'),
     'suite' : ['modules', 'test_modules'],

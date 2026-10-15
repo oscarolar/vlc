@@ -9,7 +9,7 @@ endif
 
 libdummy_plugin_la_SOURCES = control/dummy.c control/intromsg.h
 libgestures_plugin_la_SOURCES = control/gestures.c
-libhotkeys_plugin_la_SOURCES = control/hotkeys.c
+libhotkeys_plugin_la_SOURCES = control/hotkeys.c control/hotkeys_osd.h
 libhotkeys_plugin_la_LIBADD = $(LIBM)
 # XXX: netsync disabled, move current code to new playlist/player and add a
 # way to control the output clock from the player
