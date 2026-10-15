@@ -43,6 +43,7 @@
 #include "style/systempalette.hpp"
 #include "style/vlcicons.hpp"
 #include "util/navigation_history.hpp"
+#include "util/navigation_history_node.hpp"
 #include "util/flickable_scroll_handler.hpp"
 #include "util/kirigamiwheelhandler.hpp"
 #include "util/color_svg_image_provider.hpp"
@@ -236,7 +237,7 @@ void MainUI::registerQMLTypes()
         qmlRegisterTypesAndRevisions<SortCtx>(uri, versionMajor);
         qmlRegisterUncreatableType<UINotifier>(uri, versionMajor, versionMinor, "UINotifier", "");
         qmlRegisterSingletonInstance<UINotifier>(uri, versionMajor, versionMinor, "UINotifier", new UINotifier(m_mainCtx, m_mainCtx));
-        qmlRegisterSingletonInstance<NavigationHistory>(uri, versionMajor, versionMinor, "History", new NavigationHistory(this));
+        qmlRegisterSingletonInstance<NavigationHistory>(uri, versionMajor, versionMinor, "History", new NavigationHistory(&isNavigationNodeValid, this));
         qmlRegisterType<VideoSurface>(uri, versionMajor, versionMinor, "VideoSurface");
         qmlRegisterUncreatableType<BaseModel>( uri, versionMajor, versionMinor, "BaseModel", "Base Model is uncreatable." );
         qmlRegisterUncreatableType<VLCVarChoiceModel>(uri, versionMajor, versionMinor, "VLCVarChoiceModel", "generic variable with choice model" );

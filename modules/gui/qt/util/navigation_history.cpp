@@ -1,16 +1,21 @@
 #include "navigation_history.hpp"
 #include <cassert>
-#include "network/networkmediamodel.hpp"
-#include "medialibrary/mlqmltypes.hpp"
 
-NavigationHistory::NavigationHistory(QObject *parent)
+NavigationHistory::NavigationHistory(NodeValidator isNodeValid, QObject *parent)
     : QObject(parent)
+    , m_isNodeValid(isNodeValid)
 {
+    assert(m_isNodeValid);
 }
 
 bool NavigationHistory::isPreviousEmpty()
 {
     return m_history.size() <= 1;
+}
+
+bool NavigationHistory::isNextEmpty()
+{
+    return m_forward.empty();
 }
 
 void NavigationHistory::push(QStringList path, const QVariantMap& properties, Qt::FocusReason focusReason)
@@ -19,6 +24,7 @@ void NavigationHistory::push(QStringList path, const QVariantMap& properties, Qt
     for (auto it =  properties.keyValueBegin(); it != properties.keyValueEnd(); ++it)
         prop->insert((*it).first, (*it).second);
 
+    clearForward();
     m_history.emplace_back(path, std::move(prop));
 
     updateCurrent();
@@ -31,6 +37,7 @@ void NavigationHistory::push(QStringList path, const QVariantMap& properties, Qt
 
 void NavigationHistory::push(QStringList path, Qt::FocusReason focusReason)
 {
+    clearForward();
     m_history.emplace_back(path, std::make_unique<QQmlPropertyMap>());
 
     updateCurrent();
@@ -41,64 +48,6 @@ void NavigationHistory::push(QStringList path, Qt::FocusReason focusReason)
     emit navigate(focusReason);
 
 }
-
-static bool isNodeValid(const QVariant& value)
-{
-    if (value.canConvert<QStringList>()
-        || value.canConvert<QString>()
-        || value.canConvert<unsigned int>()
-        || value.canConvert<int>()
-        || value.canConvert<bool>()
-        || value.canConvert<MLItemId>())
-    {
-        return true;
-    }
-    else if ( value.canConvert<QVariantList>() )
-    {
-        QVariantList valueList = value.toList();
-        for (QVariant& v : valueList)
-        {
-            if (!isNodeValid(v))
-                return false;
-        }
-        return true;
-    }
-    else if (value.canConvert<NetworkTreeItem>() )
-    {
-        NetworkTreeItem item = value.value<NetworkTreeItem>();
-        if ( ! item.isValid() )
-            return false;
-
-        return true;
-    }
-    else if ( value.canConvert<QVariantMap>() )
-    {
-        QVariantMap valueList = value.toMap();
-        for (QVariant& v : valueList.values())
-        {
-            if (!isNodeValid(v))
-                return false;
-        }
-        return true;
-    }
-    else if ( value.isNull() )
-        return true;
-
-    assert(false);
-    return false;
-}
-
-static bool isNodeValid(const QQmlPropertyMap& value)
-{
-    for (auto it: value.keys())
-    {
-        if (!isNodeValid(value[it]))
-            return false;
-    }
-    return true;
-}
-
-
 
 void NavigationHistory::update(QStringList path)
 {
@@ -136,22 +85,64 @@ void NavigationHistory::update(QStringList path, const QVariantMap& properties)
 
 void NavigationHistory::previous(Qt::FocusReason reason)
 {
-    if (m_history.size() == 1)
+    if (m_history.size() <= 1)
         return;
 
-    m_history.pop_back();
+    const bool wasNextEmpty = isNextEmpty();
 
-    while (!isNodeValid(*m_history.back().second)) {
+    //keep the page we leave, so that next() can come back to it
+    m_forward.push_back(std::move(m_history.back()));
+    m_history.pop_back();
+    if (m_forward.size() > MAX_FORWARD_SIZE)
+        m_forward.erase(m_forward.begin());
+
+    while (m_history.size() > 1 && !m_isNodeValid(*m_history.back().second))
         m_history.pop_back();
-        if (m_history.size() == 1)
-            break;
-    }
 
     if (m_history.size() == 1)
         emit previousEmptyChanged(true);
+    if (wasNextEmpty)
+        emit nextEmptyChanged(false);
 
     updateCurrent();
     emit navigate(reason);
+}
+
+void NavigationHistory::next(Qt::FocusReason reason)
+{
+    const bool wasNextEmpty = isNextEmpty();
+
+    //pages may have become invalid since we left them
+    while (!m_forward.empty() && !m_isNodeValid(*m_forward.back().second))
+        m_forward.pop_back();
+
+    if (m_forward.empty())
+    {
+        if (!wasNextEmpty)
+            emit nextEmptyChanged(true);
+        return;
+    }
+
+    const bool wasPreviousEmpty = isPreviousEmpty();
+
+    m_history.push_back(std::move(m_forward.back()));
+    m_forward.pop_back();
+
+    if (wasPreviousEmpty)
+        emit previousEmptyChanged(false);
+    if (m_forward.empty())
+        emit nextEmptyChanged(true);
+
+    updateCurrent();
+    emit navigate(reason);
+}
+
+void NavigationHistory::clearForward()
+{
+    if (m_forward.empty())
+        return;
+    m_forward.clear();
+    emit nextEmptyChanged(true);
 }
 
 void NavigationHistory::updateCurrent()
