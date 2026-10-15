@@ -260,9 +260,14 @@ T.Control {
 
             radius: width / 2
 
-            gradient: Gradient {
-                GradientStop { position: 0.0; color: "#e25b01" }
-                GradientStop { position: 1.0; color: "#f89a06" }
+            color: accentTheme.bg.primary
+
+            readonly property ColorContext colorContext: ColorContext {
+                id: accentTheme
+
+                colorSet: ColorContext.ButtonAccent
+
+                enabled: root.enabled || root.paintOnly
             }
 
             Widgets.RoundedRectangleShadow {

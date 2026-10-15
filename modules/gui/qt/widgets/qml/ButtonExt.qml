@@ -45,7 +45,7 @@ T.Button {
     property color color: theme.fg.primary
     property color colorFocus: theme.visualFocus
 
-    property int radius: VLCStyle.button_radius
+    property int radius: VLCStyle.radius_small
 
     //set to true when user animates the background manually
     property bool extBackgroundAnimation: false
