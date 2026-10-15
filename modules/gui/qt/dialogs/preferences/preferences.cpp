@@ -37,8 +37,6 @@
 #include "maininterface/mainctx.hpp"
 
 #include <QHBoxLayout>
-#include <QGroupBox>
-#include <QRadioButton>
 #include <QPushButton>
 #include <QMessageBox>
 #include <QDialogButtonBox>
@@ -66,22 +64,17 @@ PrefsDialog::PrefsDialog( QWindow *parent, qt_intf_t *_p_intf )
     setLayout( main_layout );
 
     /* View (panel) selection */
-    types = new QGroupBox( qtr("Show settings") );
-    types->setAlignment( Qt::AlignHCenter );
-    QHBoxLayout *types_l = new QHBoxLayout;
-    types_l->setSpacing( 3 );
-    types_l->setContentsMargins(3, 3, 3, 3);
-    simple = new QRadioButton( qtr( "Simple" ), types );
-    simple->setToolTip( qtr( "Switch to simple preferences view" ) );
-    all = new QRadioButton( qtr("All"), types );
-    all->setToolTip( qtr( "Switch to full preferences view" ) );
-    expert = new QRadioButton( qtr("Expert"), types );
-    expert->setToolTip( qtr( "Switch to expert preferences view" ) );
-    types_l->addWidget( simple );
-    types_l->addWidget( all );
-    types_l->addWidget( expert );
-    types->setLayout( types_l );
-    simple->setChecked( true );
+    QWidget *views = new QWidget;
+    QHBoxLayout *views_l = new QHBoxLayout( views );
+    views_l->setSpacing( 6 );
+    views_l->setContentsMargins( 0, 0, 0, 0 );
+    viewButton = new QPushButton;
+    expertButton = new QPushButton( qtr( "Table view" ) );
+    expertButton->setToolTip( qtr( "Show all the settings as a flat table (expert view)" ) );
+    expertButton->setCheckable( true );
+    views_l->addWidget( viewButton );
+    views_l->addWidget( expertButton );
+    views_l->addStretch( 1 );
 
     /* Buttons */
     QDialogButtonBox *buttonsBox = new QDialogButtonBox();
@@ -162,7 +155,7 @@ PrefsDialog::PrefsDialog( QWindow *parent, qt_intf_t *_p_intf )
 
     /* Layout  */
     main_layout->addWidget( stack, 0, 0, 3, 3 );
-    main_layout->addWidget( types, 3, 0, 2, 1 );
+    main_layout->addWidget( views, 4, 0, 1, 1 );
     main_layout->addWidget( buttonsBox, 4, 2, 1 ,1 );
     main_layout->setRowStretch( 2, 4 );
     main_layout->setContentsMargins(9, 9, 9, 9);
@@ -178,9 +171,8 @@ PrefsDialog::PrefsDialog( QWindow *parent, qt_intf_t *_p_intf )
     BUTTONACT( cancel, &PrefsDialog::cancel );
     BUTTONACT( reset, &PrefsDialog::reset );
 
-    BUTTONACT( simple, &PrefsDialog::setSimple );
-    BUTTONACT( all, &PrefsDialog::setAdvanced );
-    BUTTONACT( expert, &PrefsDialog::setExpert );
+    BUTTONACT( viewButton, &PrefsDialog::toggleAllSettings );
+    connect( expertButton, &QPushButton::toggled, this, &PrefsDialog::toggleExpert );
 
     QVLCTools::restoreWidgetPosition( p_intf, "Preferences", this, QSize( 850, 700 ) );
 }
@@ -227,7 +219,7 @@ void PrefsDialog::setExpert()
                 expert_table->model()->index( 0, 0, QModelIndex() ) );
     }
 
-    expert->setChecked( true );
+    updateViewButtons( EXPERT );
     stack->setCurrentIndex( EXPERT );
     setWindowTitle( qtr( "Expert Preferences" ) );
 }
@@ -266,7 +258,7 @@ void PrefsDialog::setAdvanced()
                 advanced_tree->model()->index( 0, 0, QModelIndex() ) );
     }
 
-    all->setChecked( true );
+    updateViewButtons( ADVANCED );
     stack->setCurrentIndex( ADVANCED );
     setWindowTitle( qtr( "Advanced Preferences" ) );
 }
@@ -286,9 +278,42 @@ void PrefsDialog::setSimple()
     if( ! simple_panels[SPrefsDefaultCat] )
         changeSimplePanel( SPrefsDefaultCat );
 
-    simple->setChecked( true );
+    updateViewButtons( SIMPLE );
     stack->setCurrentIndex( SIMPLE );
     setWindowTitle( qtr( "Simple Preferences" ) );
+}
+
+void PrefsDialog::updateViewButtons( int view )
+{
+    if( view == SIMPLE )
+    {
+        viewButton->setText( qtr( "Show all settings" ) );
+        viewButton->setToolTip( qtr( "Show every setting in the advanced tree" ) );
+    }
+    else
+    {
+        viewButton->setText( qtr( "Show simple settings" ) );
+        viewButton->setToolTip( qtr( "Go back to the settings of each category" ) );
+    }
+    expertButton->setVisible( view != SIMPLE );
+    QSignalBlocker blocker( expertButton );
+    expertButton->setChecked( view == EXPERT );
+}
+
+void PrefsDialog::toggleAllSettings()
+{
+    if( stack->currentIndex() == SIMPLE )
+        setAdvanced();
+    else
+        setSimple();
+}
+
+void PrefsDialog::toggleExpert( bool checked )
+{
+    if( checked )
+        setExpert();
+    else
+        setAdvanced();
 }
 
 /* Switching from on simple panel to another */
