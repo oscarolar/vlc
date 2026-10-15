@@ -16,6 +16,7 @@ foreach vlc_test: vlc_tests
         'sources',
         'moc_headers',
         'moc_sources',
+        'ui_files',
         'suite',
         'link_with',
         'link_args',
@@ -71,10 +72,12 @@ foreach vlc_test: vlc_tests
     endif
 
     moc_sources = []
-    if (vlc_test.has_key('moc_headers') or vlc_test.has_key('moc_sources')) and qt6_dep.found()
+    if (vlc_test.has_key('moc_headers') or vlc_test.has_key('moc_sources')
+            or vlc_test.has_key('ui_files')) and qt6_dep.found()
         moc_sources += qt6.preprocess(
             moc_headers: vlc_test.get('moc_headers', []),
             moc_sources: vlc_test.get('moc_sources', []),
+            ui_files: vlc_test.get('ui_files', []),
             include_directories: qt_include_dir,
             dependencies: qt6_dep)
     endif

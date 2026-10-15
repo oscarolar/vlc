@@ -125,8 +125,10 @@ static int MLList( vlc_medialibrary_module_t*, int,
     return VLC_EGENERIC;
 }
 
-static int MLControl( vlc_medialibrary_module_t*, int, va_list )
+static int MLControl( vlc_medialibrary_module_t*, int query, va_list args )
 {
+    if (testenv && testenv->mlControl)
+        return testenv->mlControl(query, args);
     return VLC_EGENERIC;
 }
 

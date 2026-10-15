@@ -70,6 +70,9 @@ struct VLCTestingEnv
 
     //if set to false no render discovery will be found
     bool renderDiscoveryProbeEnabled = true;
+
+    //if set, handles the control queries of the stub media library module
+    int (*mlControl)(int query, va_list args) = nullptr;
 };
 
 #endif /* QT_VLC_STUB_MODULES */
