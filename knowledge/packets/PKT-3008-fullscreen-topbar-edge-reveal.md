@@ -148,7 +148,7 @@ docker --context nzxt run --rm -v ~/src/vlc:/vlc -w /vlc registry.videolan.org/v
 
 ### Evidence
 Executed 2026-10-15 on nzxt, worktree ~/src/vlc-wt/pkt-3008, branch `master-pkt-3008-fullscreen-topbar-edge-reveal` from ce4af2f,
-CI image `registry.videolan.org/vlc-debian-unstable:20260611225331`, `meson setup build-meson -Dextra_checks=true && ninja -j8 -C build-meson && meson test -C build-meson --suite qt`.
+CI image registry.videolan.org vlc-debian-unstable:20260611225331, `meson setup build-meson -Dextra_checks=true && ninja -j8 -C build-meson && meson test -C build-meson --suite qt`.
 
 - PR: https://github.com/oscarolar/vlc/pull/10 (fork, base master).
 - Commits:
