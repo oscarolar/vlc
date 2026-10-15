@@ -949,6 +949,8 @@ SPrefsPanel::SPrefsPanel( qt_intf_t *_p_intf, QWidget *_parent,
                             ui.encoding );
             configGeneric<StringConfigControl>( "sub-language", ui.subLangLabel,
                             ui.preferredLanguage );
+            configGeneric<IntegerListConfigControl>( "sub-autodetect-fuzzy",
+                            ui.subFuzzyLabel, ui.subFuzzy );
 
             configGeneric<IntegerListConfigControl>( "freetype-rel-fontsize",
                             ui.fontSizeLabel, ui.fontSize );

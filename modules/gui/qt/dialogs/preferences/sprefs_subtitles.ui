@@ -136,6 +136,25 @@
            </property>
           </widget>
          </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="subFuzzyLabel">
+           <property name="minimumSize">
+            <size>
+             <width>250</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>File name matching</string>
+           </property>
+           <property name="buddy">
+            <cstring>subFuzzy</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QComboBox" name="subFuzzy"/>
+         </item>
         </layout>
        </widget>
       </item>
@@ -429,6 +448,7 @@
   <tabstop>spuActiveBox</tabstop>
   <tabstop>preferredLanguage</tabstop>
   <tabstop>encoding</tabstop>
+  <tabstop>subFuzzy</tabstop>
   <tabstop>font</tabstop>
   <tabstop>fontSize</tabstop>
   <tabstop>fontColor</tabstop>
